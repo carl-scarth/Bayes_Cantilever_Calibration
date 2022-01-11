@@ -37,7 +37,7 @@ functions {
   // but for a non-symmetric covariance matrix. This is used when evaulating the covariance between two different sets of points.
   matrix ARD_SE_cov_non_sym(matrix x1, matrix x2, real lambda, row_vector beta) {
     int N1 = rows(x1);  // number of training data points
-    int N2 = rows(x2);  // number of training data points
+    int N2 = rows(x2);  // number of points at which predictions are required
     int d = cols(x1);   // number of inputs
     matrix[N1, N2] K;   // Declare covariance matrix
     {
@@ -71,7 +71,7 @@ functions {
     vector[N1] K_div_y;
     matrix[N1,N2] k_x_xt;   // Covariance matrix of training data points with test data points
     vector[N2] f_mu;        // Posterior predictive GP mean
-    matrix[N1, N2] v_pred;  // 
+    matrix[N1, N2] v_pred;
     matrix[N2, N2] C_xt_xt; // Covariance matrix of test data points with themselves
     matrix[N2, N2] f_cov;   // Posterior predictive GP covariance
     // Define covariance matrix combining training and test data
