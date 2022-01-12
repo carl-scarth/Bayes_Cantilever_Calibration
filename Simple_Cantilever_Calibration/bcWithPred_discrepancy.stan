@@ -11,7 +11,7 @@ functions {
     // Note: n is the number of observed data points
     //       m is the number of simulated (model) data points
     //       n_pred is the number of predictions
-    int N = m + n + 3*n_pred;
+    int N = m + n + 3*n_pred; // Total number of  points (and therefore dimension of covariance matrix)
     matrix[N, N] sigma_z; // declare variable for joint covariance matrix
     {
     //main body of the funtion
@@ -99,35 +99,39 @@ functions {
   return sigma_z;
 }
 
-  // Define a functin for nalytical expressions for GP posterior predictions for a zero-mean prior, with covariance structure as constructed using cal_pred_disc_cov, 
+  // Define a function for analytical expressions for GP posterior predictions for a zero-mean prior, with covariance structure as constructed using cal_pred_disc_cov, 
   // for a calibrated Gaussian process which outputs separate calibrated predictions, and the corresponding discrepancy and emulator contributions
   vector gp_pred_disc_rng(int m, int n, int n_pred, vector y1, int p, int q, matrix xf, row_vector tf, matrix xc, matrix tc, matrix x_pred, row_vector beta_eta, real lambda_eta, row_vector beta_delta, real lambda_delta, real lambda_e) {
     int N1 = m + n;     // number of training data points
     int N2 = 3*n_pred;  // number of points at which predictions are required
-    vector[N2] f_pred;      // initialise function output 
+    vector[N2] f_pred;  // initialise function output 
     {
     // Main body of the function
     matrix[(N1+N2), (N1+N2)] K_all; // Joint covariance matrix of training and test data points
     matrix[N1, N1] L;               // Cholesky decomposition of covariance matrix
     vector[N1] L_div_y;             // 
     vector[N1] K_div_y;
-    vector[N2] f_mu;                // Posterior predictive GP mean
+    vector[N2] f_mu;                // Posterior predictive GP mean at x_pred
     matrix[N1, N2] v_pred;
     matrix[N2, N2] f_cov;           // Posterior predictive GP covariance
     
     // Calculate joint covariance matrix of training and test data points
     K_all = cal_pred_disc_cov(n, m, n_pred, p, q, xf, tf, xc, tc, x_pred, beta_eta, lambda_eta, beta_delta, lambda_delta, lambda_e);
-    // Efficient matrix algebra for determining emulator predictive mean and covariance
+    // Efficiently calculate the posterior predictive GP mean and covariance using the Cholesky decomposition of the covariance matrix
+    // For expressions, see Chapter 2, "Gaussian Processes for Machine Learning", Rasmussen and Williams, MIT Press, 2006, ISBN 0-262-18253-X.
+    // http://www.gaussianprocess.org/gpml/
+    // Isolate portion of the covariance of field data and model output data
     L = cholesky_decompose(K_all[1:N1,1:N1]);
     L_div_y = mdivide_left_tri_low(L, y1);
     K_div_y = mdivide_right_tri_low(L_div_y', L)';
-    // Determine predictive mean
+    // Calculate posterior predictive mean through matrix algebra
     f_mu = K_all[1:N1,(N1+1):(N1+N2)]' * K_div_y;
     v_pred = mdivide_left_tri_low(L, K_all[1:N1,(N1+1):(N1+N2)]);
-    // Determine predictive covariance. Note that a small nugget term is added to ensure covariance is positive semi-defininte when many predictions are required
+    // calcluate posterior predictive covariance through matrix algebra
+    // note: a small nugget term is added to this to force the matrix to be positive-semi-definite when many predictions are required
     f_cov = K_all[(N1+1):(N1+N2),(N1+1):(N1+N2)] - v_pred'*v_pred + diag_matrix(rep_vector(1e-8,N2));
-    // Sample from the resulting Gaussian process
-	f_pred = multi_normal_rng(f_mu, f_cov);
+    // sample predictions from a Gaussian process (discretised as multivariate normal) using posterior predictive mean and covariance
+    f_pred = multi_normal_rng(f_mu, f_cov);
     }
     return f_pred;
 }
@@ -143,6 +147,7 @@ data {
   vector[n] y;          // field observations
   vector[m] eta;        // output of computer simulations
   matrix[n, p] xf;      // observable/controlled inputs corresponding to y
+  
   // (xc, tc): design points (controlled and calibration inputs) corresponding to eta
   matrix[m, p] xc; 
   matrix[m, q] tc; 
@@ -151,14 +156,8 @@ data {
 }
 
 transformed data {
-  int<lower = 1> N;
   vector[n+m] y_eta;
   vector[n+m] mu; // prior mean vector
-  
-  // Total number of  points (and therefore dimension of covariance matrix).
-  // Prediction points are accounted for three times as covariance of emulator,
-  // discrepancy and calibrated predictions are different
-  N = n + m + 3*n_pred;
   // set the prior mean vector to zero
   for (i in 1:(m+n)) {
     mu[i] = 0;
