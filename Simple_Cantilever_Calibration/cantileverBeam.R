@@ -1,4 +1,4 @@
-beamDeflection <- function(x,E,b,d,P){
+beamDeflection <- function(x,E,b,d,P,L){
  
   # Returns the deflection of isotropic cantilever beam with rectangular 
   # cross-section with breadth b and depth d, length L and Young's modulus E, 
