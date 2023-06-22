@@ -1,1 +1,0 @@
-Example calibration problem applied to DIC data from compression tests on a C-Spar. Uses full field data to calibrate a Finite Element model with uncertain ply thickness and elastic properties.
