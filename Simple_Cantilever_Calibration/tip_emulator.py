@@ -3,10 +3,15 @@ import scipy
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
+import sys
 
-from src.cantilever_beam import *  # Import cantilever model
-from src.LHS_Design import transformed_LHS  # Import Latin Hypercube module
-from src.sample_prior import *
+# Add the src directory to the pythonpath for loading shared modules
+src_path = "../src"
+sys.path.insert(0, src_path)
+
+from cantilever_beam import *  # Import cantilever model
+from LHS_Design import transformed_LHS  # Import Latin Hypercube module
+from sample_prior import *
 # from src.Prior import Prior
 
 if __name__ == "__main__":
@@ -56,6 +61,13 @@ if __name__ == "__main__":
 #                        Plot the Design of Experiments
 # ------------------------------------------------------------------------------
     
+    # Set plot parameters
+    plt.rcParams.update({'font.size': 16,
+                         'axes.labelsize': 18,
+                         'xtick.labelsize': 15,
+                         'ytick.labelsize': 15,
+                         'legend.fontsize': 15})
+    
     N_grades = 8 # Number of different values to divide the output into
     # Create data frame as Seaborn only works with Pandas
     plot_frame = pd.concat((pd.DataFrame(x_train,columns=inp_str),pd.DataFrame(y_train,columns=["Displacement"])),axis=1)
@@ -64,14 +76,10 @@ if __name__ == "__main__":
     plot_frame["Category"] = pd.cut(plot_frame["Displacement"],N_grades)
     # Create a pairs plot of the training data, coloured according to the 
     # displacement value of each point
-    sns.pairplot(plot_frame, vars = inp_str, hue="Category", palette = sns.color_palette("CMRmap",N_grades), diag_kind=None, plot_kws=dict(s = 50))
+    sns.pairplot(plot_frame, vars = inp_str, hue="Category", palette = sns.color_palette("viridis",N_grades), diag_kind=None, plot_kws=dict(s = 50))
     # Produce a pairs plot for the points at which predictions are required
     sns.pairplot(pd.DataFrame(x_pred, columns=inp_str))
     plt.show()
-    # It would be nice to play with the font size options but I've spent enough time on this
-    # I'd also like to spend more time investigating different colour palette 
-    # options. Return to this once I've made more progress with the following 
-    # code
 
 # ------------------------------------------------------------------------------
 #                           Standardise the data

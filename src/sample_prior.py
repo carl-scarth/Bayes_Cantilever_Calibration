@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.stats import norm, uniform, loguniform, lognorm
-from src.Prior import Prior
+from Prior import Prior
 
 def sample_prior(input_list, N):
     
