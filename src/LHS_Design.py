@@ -2,7 +2,8 @@ import numpy as np
 import mogp_emulator as mogp
 from scipy.stats import norm, uniform, loguniform, lognorm
 from scipy.stats.qmc import LatinHypercube
-from src.Prior import Prior
+# from src.Prior import Prior
+from Prior import Prior
       
 def transformed_LHS(input_list, N_train, sampler_package = "scipy"):
     # Takes a list describing input random variables, generates a set of 
