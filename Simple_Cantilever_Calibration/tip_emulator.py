@@ -41,8 +41,7 @@ if __name__ == "__main__":
     y_train = np.empty(shape=N_train)
     for i, x_i in enumerate(x_train):
         # x is taken as L to output tip deflection
-        y_train[i] = cantilever_beam(
-            x=x_i[4], E=x_i[0], b=x_i[2], d=x_i[3], P=x_i[1], L=x_i[4])
+        y_train[i] = cantilever_beam(x=x_i[4], E=x_i[0], b=x_i[2], d=x_i[3], P=x_i[1], L=x_i[4])
 
 # ------------------------------------------------------------------------------
 #          Generate a set of points at which predictions are required
@@ -54,8 +53,7 @@ if __name__ == "__main__":
     y_pred = np.empty(shape=N_pred)
     for i, x_i in enumerate(x_pred):
         # x is taken as L to output tip deflection
-        y_pred[i] = cantilever_beam(
-            x=x_i[4], E=x_i[0], b=x_i[2], d=x_i[3], P=x_i[1], L=x_i[4])
+        y_pred[i] = cantilever_beam(x=x_i[4], E=x_i[0], b=x_i[2], d=x_i[3], P=x_i[1], L=x_i[4])
 
 # ------------------------------------------------------------------------------
 #                        Plot the Design of Experiments
@@ -85,8 +83,22 @@ if __name__ == "__main__":
 #                           Standardise the data
 # ------------------------------------------------------------------------------
 
-# Plot Design of experiments
-# Transform the various inputs
+    # Standardise outputs to have zero mean and unit sample variance
+    y_mu = np.mean(y_train)
+    y_sd = np.std(y_train)
+    y_trans = (y_train - y_mu)/y_sd
+
+    # Normalise inputs such that training data lies on the unit hypercube
+    x_min = x_train.min(axis = 0)
+    x_max = x_train.max(axis = 0)
+    x_trans = (x_train - x_min)/(x_max- x_min)
+    # Normalise test data in the same fashion as the training data for consistency
+    x_pred_trans = (x_pred - x_min)/(x_max- x_min)
+    
+#-------------------------------------------------------------------------------
+#                    Fit emulator using Bayesian inference 
+#-------------------------------------------------------------------------------
+
 # Compare against MLE?
 # Compare histogram, RMSE?
 
