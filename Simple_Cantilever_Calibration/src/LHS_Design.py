@@ -2,9 +2,11 @@ import numpy as np
 import mogp_emulator as mogp
 from scipy.stats import norm, uniform, loguniform, lognorm
 from scipy.stats.qmc import LatinHypercube
+from skopt.space import Space
+from skopt.sampler import Lhs
 from src.Prior import Prior
       
-def transformed_LHS(input_list, N_train, sampler_package = "scipy"):
+def transformed_LHS(input_list, N_train, sampler_package = "scipy", sampler_kwargs = {}):
     # Takes a list describing input random variables, generates a set of 
     # N_train Latin Hypercube samples using packack "sampler_package", and 
     # scales them onto the correct range, or if required, weights them 
@@ -27,6 +29,11 @@ def transformed_LHS(input_list, N_train, sampler_package = "scipy"):
     if sampler_package == "scipy":
         sampler = LatinHypercube(d=d, optimization = "random-cd")
         FLHS = sampler.random(N_train)
+    elif sampler_package == "scikit-optimize":
+        sampler = Lhs(**sampler_kwargs)
+        space = Space([(0.0, 1.0) for entry in input_list])
+        FLHS = sampler.generate(space.dimensions, N_train)
+        FLHS = np.array(FLHS)
     elif sampler_package == "mogp":
         # Create a Latin Hypercube Sample (LHS) object defined on the unit hypercube [0, 1]^d
         sampler = mogp.LatinHypercubeDesign([(0.0, 1.0) for entry in input_list])
