@@ -3,6 +3,8 @@ import scipy
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
+import pymc as pm
+import arviz as az
 import sys
 
 # Add the src directory to the pythonpath for loading shared modules
@@ -77,7 +79,6 @@ if __name__ == "__main__":
     sns.pairplot(plot_frame, vars = inp_str, hue="Category", palette = sns.color_palette("viridis",N_grades), diag_kind=None, plot_kws=dict(s = 50))
     # Produce a pairs plot for the points at which predictions are required
     sns.pairplot(pd.DataFrame(x_pred, columns=inp_str))
-    plt.show()
 
 # ------------------------------------------------------------------------------
 #                           Standardise the data
@@ -99,6 +100,175 @@ if __name__ == "__main__":
 #                    Fit emulator using Bayesian inference 
 #-------------------------------------------------------------------------------
 
-# Compare against MLE?
-# Compare histogram, RMSE?
+    # Create pymc model
+    with pm.Model() as emulator_model:
+    
+        # Priors on emulator hyperparameters and noise parameter
+        # Updata to improve convergence. Stan guidance on GP priors:
+        #'https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations#priors-for-gaussian-processes'
+        # Example I'm following:
+        # https://www.pymc.io/projects/examples/en/latest/gaussian_processes/GP-Latent.html
+              
+        # Scale parameter
+        # lambda_em = pm.Gamma("lambda_em", alpha = 5.0, beta = 5.0)
+        sigma_em = pm.HalfNormal("sigma_em", sigma = 1.0)
+                
+        # Define correltion length parameters
+        # rho = pm.Beta("rho", alpha = 1.0, beta = 0.1, shape = 3)
+        # beta = pm.Deterministic("beta", -4.0*np.log(rho))
+        ls = pm.InverseGamma("ls", alpha = 4.0, beta = 4.0, shape = d)
+        # Define mean and covariance functions
+        mean_func = pm.gp.mean.Zero()
+        # cov_func = pm.gp.cov.Constant(1.0/lambda_em) * pm.gp.cov.ExpQuad(3,ls=2.0/pt.sqrt(beta)) # + pm.gp.cov.WhiteNoise(sigma_noise**2)
+        cov_func = pm.gp.cov.Constant(sigma_em**2) * pm.gp.cov.ExpQuad(d,ls=ls)
+        # In the long run I'd rather be able to implement my own covariance matrices,
+        # but this requires figuring out pytensor. Look through documentation.
+        # Also discussion topics might help
+    
+        #----------------------------------------------------------------------
+        
+        # Implementation using multivariate normal:
+        # y_ = pm.MvNormal("y", mu=mean_func(x_trans), cov=cov_func(x_trans), observed = y_trans)
+            
+        #----------------------------------------------------------------------
+            
+        # Alternative example using marginal likelihood GP
+        #define marginal likelihood GP
+        gp = pm.gp.Marginal(mean_func = mean_func, cov_func = cov_func)
+        y_ = gp.marginal_likelihood("y", X = x_trans, y = y_trans, sigma = 1e-8)
+    
+        #--------------------------------------------------------------------------
+    
+        # I would like to explicitly model this, but don't know how to explicitly
+        # define a pytensor object for the covariance matrix. I think I should
+        # be able to do this once I have sussed out pytensor. Not sure that this
+        # library is actually that good for readability
+        # Atttempt at implementing this so far...
+        #Sigma_em = np.zeros((N,N))
+        #for i in range(N):
+            #    for j in range(N):
+                #        dx = x_trans[i,] - x_trans[j,]
+                #        print(type(beta))
+                #        print(beta.shape)
+                #        print(beta*dx*dx)
+                #        print((beta*dx*dx).shape)
+                #        print(sum(beta*dx*dx).shape)
+                #        test = sum(beta*dx*dx)
+                #        Sigma_em[i, j] = sum(beta * dx * dx)
+                #        Sigma_em[j, i] = Sigma_em[i, j]
+            
+                # We can implement a Gaussian process using the Latent (without)
+                # noise or marginal (with noise) Gaussian process modules in 
+                # pymc. It's probably also possible using a multivariate normal,
+                # but I'd need to understand the tensor data structure a little 
+                # better to do this
+ 
+    #    Sigma_em = np.exp(-Sigma_em[i, j])/lambda_em + np.identity(N)*sigma_noise
+    #    
 
+        # Draw 3000 posterior samples using NUTS sampling
+        # default target_accept = 0.9. Increase if needed to improve convergece at
+        # the cost of higher sampling time
+        idata = pm.sample(3000, target_accept=0.9)
+    
+    az.plot_trace(idata, combined=True, figsize=(10, 7));
+
+#------------------------------------------------------------------------------
+#                 Plot histograms of the posterior marginals
+#------------------------------------------------------------------------------
+
+    # Extract samples of various quantities 
+    # rho = idata.posterior["rho"].values.reshape((-1,3))    
+    # beta= idata.posterior["beta"].values.reshape((-1,3))
+    ls = idata.posterior["ls"].values.reshape((-1,d))
+    # lambda_em = idata.posterior["lambda_em"].values.reshape((-1,1))
+    sigma_em = idata.posterior["sigma_em"].values.reshape((-1,1))
+
+    fig, ax = plt.subplots(figsize=[16,6])
+    #ax.hist(lambda_em, bins = 49, color="tab:green",edgecolor="black")
+    #ax.set_title("Emulator Precision")
+    
+    ax.hist(sigma_em, bins = 49, density = True, color="tab:green",edgecolor="black")
+    ax.set_title("Emulator standard deviation")
+    ax.set_xlabel("Sigma_em")
+    ax.set_ylabel("Density")
+
+    fig2, axs2 = plt.subplots(1,d,figsize=[20,6])
+    for i, ax2 in enumerate(axs2):
+    #    ax2.hist(rho[:,i], bins = 49, color = "tab:blue", edgecolor="black")
+        ax2.hist(ls[:,i], bins = 49, color = "tab:blue", edgecolor="black")
+        ax2.set_xlabel("ls_" + str(i))
+        ax2.set_ylabel("Density")
+    #fig3, axs3 = plt.subplots(1,3, figsize=[16,6])
+    # for i, ax3 in enumerate(axs3):
+    #ax3.hist(beta[:,i], bins = 49, color = "tab:orange", edgecolor="black")
+  
+    N_post = sigma_em.shape[0] # Number of posterior samples
+    
+    # Better to use gp.predict, as unlike the conditional method, this may be 
+    # used outside of the "with" statement
+    # This only generates the means and covariance, though this could in turn be
+    # used to sample
+
+#------------------------------------------------------------------------------
+#                 Make predictions using the fitted emulator
+#------------------------------------------------------------------------------
+
+    # Take a sub-sample of the posterior parameters (Note: If the number of 
+    # predictions is greater than the numver of posterior samples it might be
+    # necessary to set replace = True)
+    N_sub_sam = 50
+    pred_ind = np.random.choice(N_post,N_sub_sam, replace = False)
+    mu_pred = np.empty((N_pred, N_sub_sam),float)
+    sigma_pred = np.empty((N_pred, N_sub_sam),float)
+    # f_pred = np.empty((N_pred, N_sam_pred),float)
+
+    # Take N_sam_pred random samples from the posterior and generate a sample prediction
+    for i, post_i in enumerate(pred_ind):
+        point = {"sigma_em" : float(sigma_em[post_i]), "ls" : ls[post_i,]}
+        # Note, I could just used the closed form expression for this and it would work without the irritating pymc formatting
+        # Could also use scikit-learn
+        mu_pred[:,i], sigma_pred[:,i] = gp.predict(x_pred_trans, point = point, model = emulator_model, diag = True)
+        # For if the number of predictions is low enough that it's possible to calculate the whole predictive covariance matrix
+        # mu_pred[:,i], cov = gp.predict(x_pred_trans, point = point, model = emulator_model, diag = False)
+        # f_pred[:,i] = np.random.multivariate_normal(mu_pred[:,i], cov)
+        # sigma_pred[:,i] = np.diagonal(cov)
+        
+    mu_pred = np.mean(mu_pred,axis=1)
+    sigma_pred = np.mean(sigma_pred,axis=1)
+
+#------------------------------------------------------------------------------
+#           Transform back onto correct scale then plot histogram
+#------------------------------------------------------------------------------
+
+    # Take average across posterior sample
+
+# Compare against MLE? Add point-estimate to plot?
+# Compare histogram
+    # Convert the mean and standard deviation back onto the true scale
+    mu_pred = mu_pred*y_sd + y_mu
+    sigma_pred = sigma_pred*y_sd
+    fig3, ax3 = plt.subplots()
+    # Plot histogram of true displacement
+
+    mu_hist, bin_edges = np.histogram(mu_pred, bins=149, density=True)
+    bin_mid = (bin_edges[:-1] + bin_edges[1:])/2.0
+
+    ax3.hist(y_pred, bins = 49, color = "tab:blue", edgecolor="black", density=True)
+    #ax3.hist(mu_pred, bins = 149, color = "tab:red", histtype="step", edgecolor="red", density=True)
+    ax3.plot(bin_mid,mu_hist,color="red",linewidth=2)
+
+    fig4,ax4 = plt.subplots()
+    ax4.hist(sigma_pred, bins=49, color = "tab:red", edgecolor="black", density=True)
+    
+    # Loop up other histogram code using pandas - maybe nicer?
+    plt.show()
+
+    # Improve histogram, maybe Kernel Density Estimate??
+    # Put point estimate against posteriors
+    # Play aroud with other formulations of model
+    # Also add prior plots on posterior histograms.
+    # Ideally I would define the prior outside of the context menu then sample some draws from this so autmoated. (see marginal_likelihood example in Thomas' folder)
+    # It isn't possible to do this outside of the context menu
+    # Just manually implement for now
+    # This code is pretty good. Move onto other example then tidy up later
