@@ -4,7 +4,7 @@ from scipy.stats import norm, uniform, loguniform, lognorm
 from scipy.stats.qmc import LatinHypercube
 from skopt.space import Space
 from skopt.sampler import Lhs
-from src.Prior import Prior
+from Prior import Prior
       
 def transformed_LHS(input_list, N_train, sampler_package = "scipy", sampler_kwargs = {}):
     # Takes a list describing input random variables, generates a set of 

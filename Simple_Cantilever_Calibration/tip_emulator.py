@@ -3,10 +3,15 @@ import scipy
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
+import sys
 
-from src.cantilever_beam import *  # Import cantilever model
-from src.LHS_Design import transformed_LHS  # Import Latin Hypercube module
-from src.sample_prior import *
+# Add the src directory to the pythonpath for loading shared modules
+src_path = "../src"
+sys.path.insert(0, src_path)
+
+from cantilever_beam import *  # Import cantilever model
+from LHS_Design import transformed_LHS  # Import Latin Hypercube module
+from sample_prior import *
 # from src.Prior import Prior
 
 if __name__ == "__main__":
@@ -36,8 +41,7 @@ if __name__ == "__main__":
     y_train = np.empty(shape=N_train)
     for i, x_i in enumerate(x_train):
         # x is taken as L to output tip deflection
-        y_train[i] = cantilever_beam(
-            x=x_i[4], E=x_i[0], b=x_i[2], d=x_i[3], P=x_i[1], L=x_i[4])
+        y_train[i] = cantilever_beam(x=x_i[4], E=x_i[0], b=x_i[2], d=x_i[3], P=x_i[1], L=x_i[4])
 
 # ------------------------------------------------------------------------------
 #          Generate a set of points at which predictions are required
@@ -49,12 +53,18 @@ if __name__ == "__main__":
     y_pred = np.empty(shape=N_pred)
     for i, x_i in enumerate(x_pred):
         # x is taken as L to output tip deflection
-        y_pred[i] = cantilever_beam(
-            x=x_i[4], E=x_i[0], b=x_i[2], d=x_i[3], P=x_i[1], L=x_i[4])
+        y_pred[i] = cantilever_beam(x=x_i[4], E=x_i[0], b=x_i[2], d=x_i[3], P=x_i[1], L=x_i[4])
 
 # ------------------------------------------------------------------------------
 #                        Plot the Design of Experiments
 # ------------------------------------------------------------------------------
+    
+    # Set plot parameters
+    plt.rcParams.update({'font.size': 16,
+                         'axes.labelsize': 18,
+                         'xtick.labelsize': 15,
+                         'ytick.labelsize': 15,
+                         'legend.fontsize': 15})
     
     N_grades = 8 # Number of different values to divide the output into
     # Create data frame as Seaborn only works with Pandas
@@ -64,21 +74,31 @@ if __name__ == "__main__":
     plot_frame["Category"] = pd.cut(plot_frame["Displacement"],N_grades)
     # Create a pairs plot of the training data, coloured according to the 
     # displacement value of each point
-    sns.pairplot(plot_frame, vars = inp_str, hue="Category", palette = sns.color_palette("CMRmap",N_grades), diag_kind=None, plot_kws=dict(s = 50))
+    sns.pairplot(plot_frame, vars = inp_str, hue="Category", palette = sns.color_palette("viridis",N_grades), diag_kind=None, plot_kws=dict(s = 50))
     # Produce a pairs plot for the points at which predictions are required
     sns.pairplot(pd.DataFrame(x_pred, columns=inp_str))
     plt.show()
-    # It would be nice to play with the font size options but I've spent enough time on this
-    # I'd also like to spend more time investigating different colour palette 
-    # options. Return to this once I've made more progress with the following 
-    # code
 
 # ------------------------------------------------------------------------------
 #                           Standardise the data
 # ------------------------------------------------------------------------------
 
-# Plot Design of experiments
-# Transform the various inputs
+    # Standardise outputs to have zero mean and unit sample variance
+    y_mu = np.mean(y_train)
+    y_sd = np.std(y_train)
+    y_trans = (y_train - y_mu)/y_sd
+
+    # Normalise inputs such that training data lies on the unit hypercube
+    x_min = x_train.min(axis = 0)
+    x_max = x_train.max(axis = 0)
+    x_trans = (x_train - x_min)/(x_max- x_min)
+    # Normalise test data in the same fashion as the training data for consistency
+    x_pred_trans = (x_pred - x_min)/(x_max- x_min)
+    
+#-------------------------------------------------------------------------------
+#                    Fit emulator using Bayesian inference 
+#-------------------------------------------------------------------------------
+
 # Compare against MLE?
 # Compare histogram, RMSE?
 
