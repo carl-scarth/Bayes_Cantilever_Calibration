@@ -27,7 +27,7 @@ if __name__ == "__main__":
     d = len(inputs)  # Number of inputs
     N_train = 50  # Number of required training data points
     # Generate training samples
-    x_train = transformed_LHS(inputs, N_train, sampler_package="scipy")
+    x_train = transformed_LHS(inputs, N_train, sampler_package="scikit-optimize", sampler_kwargs={"lhs_type":"classic","criterion":"maximin", "iterations":10000})
     inp_str = [inp[0] for inp in inputs] # List of input variable names
 
 # ------------------------------------------------------------------------------
