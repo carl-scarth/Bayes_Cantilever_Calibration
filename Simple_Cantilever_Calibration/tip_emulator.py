@@ -14,7 +14,6 @@ sys.path.insert(0, src_path)
 from cantilever_beam import *  # Import cantilever model
 from LHS_Design import transformed_LHS  # Import Latin Hypercube module
 from sample_prior import *
-# from src.Prior import Prior
 
 if __name__ == "__main__":
 
@@ -248,27 +247,29 @@ if __name__ == "__main__":
     # Convert the mean and standard deviation back onto the true scale
     mu_pred = mu_pred*y_sd + y_mu
     sigma_pred = sigma_pred*y_sd
-    fig3, ax3 = plt.subplots()
+    fig3, ax3 = plt.subplots(figsize=[10,6])
     # Plot histogram of true displacement
+    ax3.hist(y_pred, bins = 49, color = "salmon", edgecolor="black", density=True, label = "Beam model")
+    # Slightly reduce the smoothness of the kde, and truncate a little belong extreme values
+    sns.kdeplot(mu_pred, color="blue", linewidth=3, bw_adjust=0.95, cut=0.1, ax=ax3, label = "Emulator")
+    ax3.set_xlabel("Tip displacement (mm)")
+    ax3.set_ylabel("Density")
+    ax3.set_title("Uncertainty propagation results")
+    ax3.legend()
 
-    mu_hist, bin_edges = np.histogram(mu_pred, bins=149, density=True)
-    bin_mid = (bin_edges[:-1] + bin_edges[1:])/2.0
-
-    ax3.hist(y_pred, bins = 49, color = "tab:blue", edgecolor="black", density=True)
-    #ax3.hist(mu_pred, bins = 149, color = "tab:red", histtype="step", edgecolor="red", density=True)
-    ax3.plot(bin_mid,mu_hist,color="red",linewidth=2)
-
-    fig4,ax4 = plt.subplots()
+    fig4,ax4 = plt.subplots(figsize=[10,6])
     ax4.hist(sigma_pred, bins=49, color = "tab:red", edgecolor="black", density=True)
+    ax4.set_xlabel("Emulator standard deviation (m)")
+    ax4.set_ylabel("Density")
+    ax4.set_title("Emulator standard deviation")
     
-    # Loop up other histogram code using pandas - maybe nicer?
     plt.show()
 
-    # Improve histogram, maybe Kernel Density Estimate??
     # Put point estimate against posteriors
     # Play aroud with other formulations of model
     # Also add prior plots on posterior histograms.
     # Ideally I would define the prior outside of the context menu then sample some draws from this so autmoated. (see marginal_likelihood example in Thomas' folder)
     # It isn't possible to do this outside of the context menu
     # Just manually implement for now
+    # Consider working with pandas
     # This code is pretty good. Move onto other example then tidy up later
