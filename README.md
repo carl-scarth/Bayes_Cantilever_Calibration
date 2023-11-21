@@ -1,2 +1,2 @@
-# CerTest_Problems
+# Bayesian_Model_Calibration
 # This is a repository of example problems, and code written or adapted to address the "Integration and Methodology Validation" Research Challenge, of the EPSRC CerTest programme grant, EP/S017038/1. This repository specifically aims to address challenges associated with fusing data from high-fidelity, multi-scale mechanical models with measurements from data rich structural tests, within a Bayesian framework.
