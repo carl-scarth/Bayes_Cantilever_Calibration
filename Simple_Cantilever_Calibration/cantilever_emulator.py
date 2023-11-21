@@ -68,6 +68,7 @@ if __name__ == "__main__":
     # not very efficient - could speed things up by optimising choice of replacement, rather than
     # selecting at random. An obvious choice would be to replace one of the points with the closest 
     # distance from it's nearest neighbour. Could also add in the corners to the training sample
+    # see R maximin documentation
     x_maximin, ind, d_min = rand_maximin(x_all_trans, N_maximin, 15000)
     # Extract untransformed inputs and outputs for the maximin sample
     x_train = x_all[ind,:]
