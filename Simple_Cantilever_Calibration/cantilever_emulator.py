@@ -7,7 +7,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-src_path = "../src"
+src_path = "../source"
 sys.path.insert(0, src_path)
 
 from cantilever_beam import *  # Import cantilever model
@@ -22,20 +22,20 @@ if __name__ == "__main__":
     # amd set up model parameters
     # ------------------------------------------------------------------------------
 
-    # Define uncertain input prior values
-    # Would be better in Pandas.
-    inputs = [
-        ['d', 'Gaussian', 0.01, 10.0, True],
-    ]
-
     E = 68E9 # Young's modulus
     P = 10.0 # Applied load
     b = 0.04 # Beam width
     L = 1.0  # Beam length
+    d = 10.0 # Nominal value of  beam height d
 
     N_train = 25  # Number of required training data points
     # Generate training samples
-    x_train = transformed_LHS(inputs, N_train, sampler_package="scikit-optimize", sampler_kwargs={"lhs_type":"classic","criterion":"maximin", "iterations":10000})
+    # Define uncertain input prior values
+    # Would be better in Pandas.
+    inputs = [
+        ['d', 'Uniform', 0.9*d, 1.1*d, True],
+    ]
+    x_train = transformed_LHS(inputs, N_train, sampler_package="scikit-optimize", sampler_kwargs={"lhs_type":"classic","criterion":"maximin", "iterations":100})
     inp_str = [inp[0] for inp in inputs] # List of input variable names
     inp_str.append("x")
 
@@ -73,6 +73,7 @@ if __name__ == "__main__":
     # Extract untransformed inputs and outputs for the maximin sample
     x_train = x_all[ind,:]
     y_train = y_all[ind]
+
 # ------------------------------------------------------------------------------
 #                        Plot the Design of Experiments
 # ------------------------------------------------------------------------------
@@ -86,14 +87,12 @@ if __name__ == "__main__":
                          'legend.fontsize': 15})
     
     N_grades = 8 # Number of different values to divide the output into
-
     
     # Create data frame as Seaborn only works with Pandas
     plot_frame = pd.concat((pd.DataFrame(x_train,columns=inp_str),pd.DataFrame(y_train,columns=["Displacement"])),axis=1)
     # Bin the displacement into intervals, and create a new categorical column
     # in the dataframe stating which interval each point lies within
     plot_frame["Category"] = pd.cut(plot_frame["Displacement"],N_grades)
-    print(plot_frame)
     # Create a pairs plot of the training data, coloured according to the 
     # displacement value of each point
     fig, axes = plt.subplots(1,2, sharey = True)
@@ -102,24 +101,41 @@ if __name__ == "__main__":
     sns.scatterplot(x=inp_str[0], y=inp_str[1], data=plot_frame, ax=axes[1], hue="Category", legend=False, palette = sns.color_palette("viridis",N_grades))
     plot_frame = pd.concat((pd.DataFrame(x_all, columns = inp_str),pd.DataFrame(y_all,columns=["Displacement"])),axis=1)
     plot_frame["Category"] = pd.cut(plot_frame["Displacement"],N_grades)
-    print(plot_frame)
     sns.scatterplot(x=inp_str[0], y=inp_str[1], data=plot_frame, ax=axes[0], hue="Category", legend=False, palette = sns.color_palette("viridis",N_grades))
+
+# ------------------------------------------------------------------------------
+#          Generate a set of points at which predictions are required
+# ------------------------------------------------------------------------------
+
+    # Generate a sequence of points across x and t
+    n_grid = 15
+    x_grid = np.linspace(min(sim_coords),max(sim_coords), num = n_grid).reshape(-1)
+    t_grid = np.linspace(0.9*d,1.1*d, num = n_grid)
+
+    # Take the union of these points with the training data - we want to verify
+    # that uncertainty is zero at these points
+    x_grid = np.sort(np.unique(np.concatenate((x_grid,x_train[:,1]))))
+    t_grid = np.sort(np.unique(np.concatenate((t_grid,x_train[:,0]))))
+
+    # Expand points into a grid
+    x_grid, t_grid = np.meshgrid(x_grid,t_grid)
+    x_pred = np.concatenate((x_grid.reshape(-1,1), t_grid.reshape(-1,1)),axis=1)
+    print(x_pred)
+    asdsads
+
+    # Keep working copying and pasting code from both R and tip exercise
+    # Consider improving maximin code if at a loose end
+
+#-----------------------------------------------------------------------------
+
     plt.tight_layout()
     plt.show()
-    adsadsdasdasd
-    # Up to here!!!! need to generate a set of predictions first!!! 
-    # Copy and paste format from R and tip example
-    # Consider improving maximin function
-
-    # Produce a pairs plot for the points at which predictions are required
-    sns.pairplot(pd.DataFrame(x_pred, columns=inp_str))
-#-----------------------------------------------------------------------------
 
     # ------------------------------------------------------------------------------
 
     # Will this be calculated from combined matrix with coordinate included?
  
-#   d = len(inputs)  # Number of inputs
+#   d = len(inputs)  # Number of inputs If using call something else as d defined for nominal depth
 
     #-------------------------------------------------------------------------------
 
