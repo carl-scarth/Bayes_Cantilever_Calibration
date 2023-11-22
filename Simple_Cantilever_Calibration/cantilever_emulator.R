@@ -121,12 +121,11 @@ legend(x = "topright",legend = "training data point",col="blue",pch=4)
 
 #-----------------------------------------------------------------------------
 
-# In this section of code a grid is generated for the point at which emulator
-# predictions are required. This grid is taken as the union of points in a 
-# regular grid, and the design of experiments used to train the emulator.
-# Note that it is useful to include that latter in this grid (for this 
-# exercise at least) to verify that the uncertainty is zero at the training 
-# data points.
+# Generate a grid of points for making emulator predictions, taken as the 
+# union of points in a regular grid, and the design of experiments used to 
+# train the emulator.
+# It is useful to include that latter in this grid to verify that the 
+# uncertainty is zero at the training data points.
 
 # Generate a sequence of points across x and d (named t for consistency with)
 # calibration code.
@@ -134,9 +133,6 @@ x_grid <- seq(0, L, length.out = 10)
 t_grid <- seq(-0.1*d, 0.1*d, length.out = 10)
 
 # Add in unique values of x and d from design of experiments to these points
-# Note that the "unique" function is to prevent duplication of points if there 
-# is overlap between the design of experiments, and any points in the
-# prediction grid
 x_grid = unique(c(x_grid,XT_sim$x_sim))
 t_grid = unique(c(t_grid,XT_sim$d))
 # Sort points in ascending order
@@ -147,8 +143,7 @@ xt <- expand.grid(x = x_grid, t = t_grid)
 
 #-----------------------------------------------------------------------------
 
-# In this section of code the data is put into the correct format for input to stan,
-# and the stan code for calibration, and prediction, is run.
+# Put the data into the correct format for input to stan, and run stan.
 
 # Set up the environment for the Stan model to run in parallel. Taken from:
 # https://betanalpha.github.io/assets/case_studies/gaussian_processes.html#21_Simulating_From_A_Gaussian_Process
