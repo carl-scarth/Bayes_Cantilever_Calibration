@@ -51,3 +51,13 @@ def standardise_output(y, mu_y = [], sigma_y = [], std = False):
   else:
     return(y_scale)
   
+# Function for the inverse standardisation of vector by mean mu_y and 
+# standard deviation sigma_y
+# std indicates whether the y is a standard deviation, in which case it isn't
+# necessary to add the mean
+def rescale_output(y_scale, mu_y = 0.0, sigma_y = 1.0, std = False):
+  y = y_scale*sigma_y
+  if not std:
+    y = y + mu_y
+
+  return(y)
