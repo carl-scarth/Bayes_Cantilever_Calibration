@@ -36,7 +36,6 @@
   
   # Define magnitude of the synthetic noise which will be added to model outputs to get "observed" data
   sigma_e = 0.00025 # standard deviation
-  sigma2_e = sigma_e^2  # variance
     
   #-------------------------------------------------------------------------------
   
