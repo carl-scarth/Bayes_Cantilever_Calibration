@@ -6,8 +6,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
 import pymc as pm
 import arviz as az
+from scipy.stats import halfnorm, invgamma
 
 src_path = "../source"
 sys.path.insert(0, src_path)
@@ -20,8 +22,7 @@ import transform_input_output as tio
 if __name__ == "__main__":
 
     # ------------------------------------------------------------------------------
-    # First we need to define our space of inputs and generate our training samples
-    # amd set up model parameters
+    # Define space of inputs, generate training samples, and set up model parameters
     # ------------------------------------------------------------------------------
 
     E = 68E9 # Young's modulus
@@ -31,7 +32,7 @@ if __name__ == "__main__":
     d = 0.01 # Nominal value of  beam height d
 
     N_train = 25  # Number of required training data points
-    # Generate training samples
+    
     # Define uncertain input prior values
     # Would be better in Pandas.
     inputs = [
@@ -43,6 +44,15 @@ if __name__ == "__main__":
 
     N_plot = 100   # Number of points at which beam deflection is plotted
     N_maximin = 50 # Number of model output data points which are to be retained for training the emulator 
+    
+    # Plotting parameters
+    rcParams.update({'figure.figsize' : (8,6),
+                    'font.size': 16,
+                    'figure.titlesize' : 18,
+                    'axes.labelsize': 18,
+                    'xtick.labelsize': 15,
+                    'ytick.labelsize': 15,
+                    'legend.fontsize': 15})
 
     # ------------------------------------------------------------------------------
     #           Run the cantilever beam model for Design of experiments
@@ -55,6 +65,13 @@ if __name__ == "__main__":
     y_all = np.empty(shape = (N_plot,N_train))
     for i, x_i in enumerate(x_train):
         y_all[:,i] = cantilever_beam(x=sim_coords,E=E,b=b,d = x_i[0],P=P, L=L)
+
+    # Plot the output
+    fig, ax = plt.subplots()
+    ax.plot(sim_coords,y_all)
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("Displacement (m)")
+    ax.set_title("Beam displacement across training samples")
 
     # Reshape all n_simulations x N_train points into a vector
     y_all = y_all.T.reshape((-1))
@@ -80,14 +97,6 @@ if __name__ == "__main__":
 #                        Plot the Design of Experiments
 # ------------------------------------------------------------------------------
     
-    # Set plot parameters
-    plt.rcParams.update({'font.size': 16,
-                         'figure.titlesize' : 18,
-                         'axes.labelsize': 18,
-                         'xtick.labelsize': 15,
-                         'ytick.labelsize': 15,
-                         'legend.fontsize': 15})
-    
     N_grades = 8 # Number of different values to divide the output into
     
     # Create data frame as Seaborn only works with Pandas
@@ -97,13 +106,13 @@ if __name__ == "__main__":
     plot_frame["Category"] = pd.cut(plot_frame["Displacement"],N_grades)
     # Create a pairs plot of the training data, coloured according to the 
     # displacement value of each point
-    fig, axes = plt.subplots(1,2, sharey = True)
-    fig.suptitle("Training data before and after maximin search")
+    fig2, axes2 = plt.subplots(1,2, sharey = True)
+    fig2.suptitle("Training data before and after maximin search")
     # There are only two inputs so it is more appropriate to use scatterplot thann pairplot
-    sns.scatterplot(x=inp_str[0], y=inp_str[1], data=plot_frame, ax=axes[1], hue="Category", legend=False, palette = sns.color_palette("viridis",N_grades))
     plot_frame = pd.concat((pd.DataFrame(x_all, columns = inp_str),pd.DataFrame(y_all,columns=["Displacement"])),axis=1)
     plot_frame["Category"] = pd.cut(plot_frame["Displacement"],N_grades)
-    sns.scatterplot(x=inp_str[0], y=inp_str[1], data=plot_frame, ax=axes[0], hue="Category", legend=False, palette = sns.color_palette("viridis",N_grades))
+    sns.scatterplot(x=inp_str[0], y=inp_str[1], data=plot_frame, ax=axes2[0], hue="Category", legend=False, palette = sns.color_palette("viridis",N_grades))
+    sns.scatterplot(x=inp_str[0], y=inp_str[1], data=plot_frame, ax=axes2[1], hue="Category", legend=False, palette = sns.color_palette("viridis",N_grades))
 
 # ------------------------------------------------------------------------------
 #          Generate a set of points at which predictions are required
@@ -153,7 +162,7 @@ if __name__ == "__main__":
         # lambda_em = pm.Gamma("lambda_em", alpha = 5.0, beta = 5.0)
         sigma_em = pm.HalfNormal("sigma_em", sigma = 1.0)
                 
-        # Define correltion length parameters
+        # Define correlation length parameters
         # rho = pm.Beta("rho", alpha = 1.0, beta = 0.1, shape = 3)
         # beta = pm.Deterministic("beta", -4.0*np.log(rho))
         ls = pm.InverseGamma("ls", alpha = 4.0, beta = 4.0, shape = 2)
@@ -211,38 +220,42 @@ if __name__ == "__main__":
         # the cost of higher sampling time
         idata = pm.sample(3000, target_accept=0.9)
     
-    az.plot_trace(idata, combined=True, figsize=(10, 7))
+    az.plot_trace(idata, combined=True, figsize=(10, 8))
 
 #------------------------------------------------------------------------------
 #                 Plot histograms of the posterior marginals
 #------------------------------------------------------------------------------
 
-    # THIS SECTION - ADD CODE FOR PRIOR PLOTS
     # Extract samples of various quantities 
     # rho = idata.posterior["rho"].values.reshape((-1,3))    
     # beta= idata.posterior["beta"].values.reshape((-1,3))
+    # Compare against MLE? Add point-estimate to plot????
     ls = idata.posterior["ls"].values.reshape((-1,2))
     # lambda_em = idata.posterior["lambda_em"].values.reshape((-1,1))
     sigma_em = idata.posterior["sigma_em"].values.reshape((-1,1))
 
-    fig, ax = plt.subplots(figsize=[16,6])
+    fig3, ax3 = plt.subplots()
     #ax.hist(lambda_em, bins = 49, color="tab:green",edgecolor="black")
     #ax.set_title("Emulator Precision")
     
-    ax.hist(sigma_em, bins = 49, density = True, color="tab:green",edgecolor="black")
-    ax.set_title("Emulator standard deviation")
-    ax.set_xlabel("Sigma_em")
-    ax.set_ylabel("Density")
+    sigma_plot = np.linspace(0.0,4.0,100)
+    ax3.hist(sigma_em, bins = 49, density = True, color="tomato",edgecolor="black")
+    ax3.plot(sigma_plot, halfnorm.pdf(sigma_plot), lw = 2, color = "blue") # Add prior plot
+    ax3.set_title("Emulator standard deviation")
+    ax3.set_xlabel("Sigma_em")
+    ax3.set_ylabel("Density")
 
-    fig2, axs2 = plt.subplots(1,2,figsize=[20,6])
-    for i, ax2 in enumerate(axs2):
+    fig4, axs4 = plt.subplots(1,2,figsize=[10,6])
+    ls_plot = np.linspace(0.0,4.0,100)
+    for i, ax4 in enumerate(axs4):
     #    ax2.hist(rho[:,i], bins = 49, color = "tab:blue", edgecolor="black")
-        ax2.hist(ls[:,i], bins = 49, color = "tab:blue", edgecolor="black")
-        ax2.set_xlabel("ls_" + str(i))
-        ax2.set_ylabel("Density")
-    #fig3, axs3 = plt.subplots(1,3, figsize=[16,6])
-    # for i, ax3 in enumerate(axs3):
-    #ax3.hist(beta[:,i], bins = 49, color = "tab:orange", edgecolor="black")
+        ax4.hist(ls[:,i], bins = 49, density = True, color = "tomato", edgecolor="black")
+        # Note: I think the scipy documentation is incorrect about the inverse gamma pdf
+        # I've compared with my own implementation of that described in the pymc docs and
+        # it matches, so I'm confident the below correctly matches the prior
+        ax4.plot(ls_plot, invgamma.pdf(ls_plot, 4.0, loc = 0.0, scale = 4.0), lw = 2, color = "blue")
+        ax4.set_xlabel("ls_" + str(i))
+        ax4.set_ylabel("Density")
   
     N_post = sigma_em.shape[0] # Number of posterior samples
     
@@ -269,52 +282,51 @@ if __name__ == "__main__":
         # mu_pred[:,i], cov = gp.predict(x_pred_trans, point = point, model = emulator_model, diag = False)
         # f_pred[:,i] = np.random.multivariate_normal(mu_pred[:,i], cov)
         # sigma_pred[:,i] = np.diagonal(cov)
-        
-    print(mu_pred)
-    print(mu_pred.shape)
+    
+    sigma_pred = np.sqrt(sigma_pred)
+    for value in x_train:
+        print(sigma_pred[np.all((x_pred == value), axis=1)])
     mu_pred = np.mean(mu_pred,axis=1)
     sigma_pred = np.mean(sigma_pred,axis=1)
 
 #------------------------------------------------------------------------------
-#           Transform back onto correct scale then plot histogram
+#           Transform back onto correct scale then plot predictions
 #------------------------------------------------------------------------------
 
     # Take average across posterior sample
 
-    # Compare against MLE? Add point-estimate to plot?
-    # Compare histogram
     # Convert the mean and standard deviation back onto the true scale
-    #PACKAGE INTO IT'S OWN FUNCTION
-    mu_pred = mu_pred*y_sd + y_mu
-    sigma_pred = sigma_pred*y_sd
-    
-    fig3 = plt.figure(figsize=(10,8))
-    ax3 = fig3.add_subplot(111, projection='3d')            
-    surf = ax3.plot_surface(x_grid, t_grid, mu_pred.reshape(x_grid.shape), rstride=1, cstride=1, cmap='jet', linewidth=0, antialiased=False)
+    mu_pred = tio.rescale_output(mu_pred, mu_y = y_mu, sigma_y = y_sd)
+    sigma_pred = tio.rescale_output(sigma_pred, sigma_y = y_sd, std = True)
 
-    fig4 = plt.figure(figsize=(10,8))
-    ax4 = fig4.add_subplot(111, projection='3d')            
-    surf = ax4.plot_surface(x_grid, t_grid, sigma_pred.reshape(x_grid.shape), rstride=1, cstride=1, cmap='jet', linewidth=0, antialiased=False)
+    fig5, ax5 = plt.subplots(subplot_kw = {"projection" : "3d"})
+    surf = ax5.plot_surface(x_grid, t_grid, mu_pred.reshape(x_grid.shape), rstride=1, cstride=1, cmap='jet', linewidth=0, antialiased=False, alpha = 0.8)
+    ax5.scatter(x_train[:,1], x_train[:,0], y_train, s = 25, color = "red", marker = "x")
+    ax5.set_xlabel("x (m)", labelpad = 14.0)
+    ax5.set_ylabel("Beam height (m)", labelpad = 14.0)
+    ax5.set_zlabel("Displacement (m)", labelpad = 14.0)
+    ax5.set_title("Emulator Mean")
 
-    # Add labels Add design points. Also maybe do 2d plot of force distance with prior samples?
+    fig6, ax6 = plt.subplots(subplot_kw = {"projection": "3d"})
+    surf2 = ax6.plot_surface(x_grid, t_grid, sigma_pred.reshape(x_grid.shape), rstride=1, cstride=1, cmap='jet', linewidth=0, antialiased=False)
+    ax6.scatter(x_train[:,1], x_train[:,0], np.zeros(x_train.shape[0]), s = 25, color = "red", marker = "x")
+    ax6.set_xlabel("x (m)", labelpad = 14.0)
+    ax6.set_ylabel("Beam depth (m)", labelpad = 14.0)
+    ax6.set_zlabel("Standard deviation (m)", labelpad = 14.0)
+    ax6.set_title("Emulator Standard deviation")
+    ax6.ticklabel_format(useOffset=False, style = "plain") # Keep in standard format, not scientific
+    # Non-zero standard deviaton close to jitter (scaled like the rest. would need to implement own
+    # expression to avoid this)
+
     # Put point estimate against posteriors
     # Play aroud with other formulations of model
-    # Also add prior plots on posterior histograms.
     # Ideally I would define the prior outside of the context menu then sample some draws from this so autmoated. (see marginal_likelihood example in Thomas' folder)
-    # It isn't possible to do this outside of the context menu
-    # Just manually implement for now
-    # Consider working with pandas
-    # This code is pretty good. Move onto other example then tidy up later
-    # Take averages 
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.show()
-    mkjnnmbnbnbnm
-
 
     #-------------------------------------------------------------------------------
 
 # When done, convert to Pandas and see if pymc behaves any differently
-# Continue working with 
 # what about numpyro?
 # Experiment to see if pymc any quick than stan for large N_maximin
 # Update other code with packaged elements
