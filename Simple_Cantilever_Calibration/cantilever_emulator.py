@@ -321,7 +321,7 @@ if __name__ == "__main__":
     # Put point estimate against posteriors
     # Play aroud with other formulations of model
     # Ideally I would define the prior outside of the context menu then sample some draws from this so autmoated. (see marginal_likelihood example in Thomas' folder)
-    # plt.tight_layout()
+    plt.tight_layout()
     plt.show()
 
     #-------------------------------------------------------------------------------
