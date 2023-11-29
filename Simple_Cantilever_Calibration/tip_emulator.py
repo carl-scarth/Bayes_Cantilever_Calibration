@@ -1,14 +1,17 @@
 import numpy as np
-import scipy
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import ConstantKernel, RBF
+from matplotlib import rcParams
 import pymc as pm
 import arviz as az
 import sys
 
 # Add the src directory to the pythonpath for loading shared modules
-src_path = "../src"
+src_path = "../source"
 sys.path.insert(0, src_path)
 
 from cantilever_beam import *  # Import cantilever model
@@ -36,6 +39,15 @@ if __name__ == "__main__":
     x_train = transformed_LHS(inputs, N_train, sampler_package="scikit-optimize", sampler_kwargs={"lhs_type":"classic","criterion":"maximin", "iterations":10000})
     inp_str = [inp[0] for inp in inputs] # List of input variable names
 
+    # Plotting parameters
+    rcParams.update({'figure.figsize' : (8,6),
+                    'font.size': 16,
+                    'figure.titlesize' : 18,
+                    'axes.labelsize': 18,
+                    'xtick.labelsize': 15,
+                    'ytick.labelsize': 15,
+                    'legend.fontsize': 15})    
+
 # ------------------------------------------------------------------------------
 #           Run the cantilever beam model for Design of experiments
 # ------------------------------------------------------------------------------
@@ -59,14 +71,7 @@ if __name__ == "__main__":
 # ------------------------------------------------------------------------------
 #                        Plot the Design of Experiments
 # ------------------------------------------------------------------------------
-    
-    # Set plot parameters
-    plt.rcParams.update({'font.size': 16,
-                         'axes.labelsize': 18,
-                         'xtick.labelsize': 15,
-                         'ytick.labelsize': 15,
-                         'legend.fontsize': 15})
-    
+      
     N_grades = 8 # Number of different values to divide the output into
     # Create data frame as Seaborn only works with Pandas
     plot_frame = pd.concat((pd.DataFrame(x_train,columns=inp_str),pd.DataFrame(y_train,columns=["Displacement"])),axis=1)
@@ -84,17 +89,37 @@ if __name__ == "__main__":
 # ------------------------------------------------------------------------------
 
     # Standardise outputs to have zero mean and unit sample variance
-    y_mu = np.mean(y_train)
-    y_sd = np.std(y_train)
-    y_trans = (y_train - y_mu)/y_sd
+    #y_mu = np.mean(y_train)
+    #y_sd = np.std(y_train)
+    #y_trans = (y_train - y_mu)/y_sd
+    
+    # Alternative code using scikit-learn
+    y_scaler = StandardScaler()
+    y_trans = y_scaler.fit_transform(y_train.reshape(-1,1)).reshape(-1)
+    print(y_trans)
 
     # Normalise inputs such that training data lies on the unit hypercube
-    x_min = x_train.min(axis = 0)
-    x_max = x_train.max(axis = 0)
-    x_trans = (x_train - x_min)/(x_max- x_min)
+    # x_min = x_train.min(axis = 0)
+    # x_max = x_train.max(axis = 0)
+    # x_trans = (x_train - x_min)/(x_max- x_min)
     # Normalise test data in the same fashion as the training data for consistency
-    x_pred_trans = (x_pred - x_min)/(x_max- x_min)
+    # x_pred_trans = (x_pred - x_min)/(x_max- x_min)
     
+    # Alternative code using scikit-learn
+    x_scaler = MinMaxScaler()
+    x_trans = x_scaler.fit_transform(x_train)
+    x_pred_trans = x_scaler.transform(x_pred)
+    
+#-------------------------------------------------------------------------------
+#              Fit emulator using Maximum Likelihood Estimation
+#-------------------------------------------------------------------------------
+
+    kernel = ConstantKernel(constant_value=0.5,constant_value_bounds=(1e-5,10))*RBF(length_scale=tuple(0.1 for i in range(d)), length_scale_bounds=(0.1,2.0))
+    # Default alpha (nugget) = 1e-10
+    gp_MLE = GaussianProcessRegressor(kernel=kernel, alpha = 1e-8, normalize_y = False, n_restarts_optimizer=1000).fit(x_trans, y_trans)
+    # Keep looking at Kernel functions - check if the paameters I've used make sense, also make predictions. Could also try using default values
+    # Note, I might have broken the below code by changing to scikit learn preprocessing which assumes different shape to pymc
+
 #-------------------------------------------------------------------------------
 #                    Fit emulator using Bayesian inference 
 #-------------------------------------------------------------------------------
@@ -170,8 +195,8 @@ if __name__ == "__main__":
         # the cost of higher sampling time
         idata = pm.sample(3000, target_accept=0.9)
     
-    az.plot_trace(idata, combined=True, figsize=(10, 7));
-
+    az.plot_trace(idata, combined=True, figsize=(10, 7))
+    
 #------------------------------------------------------------------------------
 #                 Plot histograms of the posterior marginals
 #------------------------------------------------------------------------------
@@ -245,8 +270,14 @@ if __name__ == "__main__":
 # Compare against MLE? Add point-estimate to plot?
 # Compare histogram
     # Convert the mean and standard deviation back onto the true scale
-    mu_pred = mu_pred*y_sd + y_mu
-    sigma_pred = sigma_pred*y_sd
+    # mu_pred = mu_pred*y_sd + y_mu
+    # sigma_pred = sigma_pred*y_sd
+    mu_pred = y_scaler.inverse_transform(mu_pred.reshape(-1,1)).reshape(-1)
+    print(mu_pred)
+    # with_mean might not work in this context
+    sigma_pred = y_scaler.inverse_transform(sigma_pred.reshape(-1,1), with_mean = False).reshape(-1)
+    print(sigma_pred)
+
     fig3, ax3 = plt.subplots(figsize=[10,6])
     # Plot histogram of true displacement
     ax3.hist(y_pred, bins = 49, color = "salmon", edgecolor="black", density=True, label = "Beam model")
