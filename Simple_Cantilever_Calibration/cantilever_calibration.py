@@ -1,7 +1,8 @@
 # Calibration of a simple cantilver beam model with uncertain depth using synthetic data
 import sys
-import numpy
-from scipy.stats import uniform
+import numpy as np
+import pandas as pd
+from scipy.stats import uniform, norm
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 
@@ -68,27 +69,20 @@ if __name__ == "__main__":
     # Pre-define deviation from nominal beam thickness based upon previously 
     # generated data (comment out if using line 65 to generate new synthetic data)
     d_data = d + 0.0005782702 # pre-define for reproducability
-    print(d_data)
-    sahdsadsadsadsa
-    # PINCHED FROM R VVVVVV
   
-    # Define coordinates at which displacements are observed
-    # (not including 0 and L, assuming it is difficult to take measurements near boundary)
-    #x = seq(0.05*L, 0.95*L, length.out = n_data)
-    # add some repeated observations. These arise at n_repeats randomly selected coordinates from x
-    #x_repeat = x[ceiling(runif(n=n_repeats,min=0,max=n_data))]
-    #x = c(x,x_repeat) # code this properly in the actual version....
-    #dt_coords = data.table(x)
+    # Define coordinates at which displacements are observed (not including 0 and 
+    # L, assuming it is difficult to take measurements near boundary)
+    x = [i/(N_data-1)*0.98*L + 0.01 for i in range(N_data)]
+
+    # Add some repeated observations
+    x_repeat = [x[i] for i in np.random.randint(N_data, size = N_repeats).tolist()]
+    x = x + x_repeat
   
-    # Calculate displacement at these points, given the "true" value of depth, using the separate "cantileverBeam.R" function
-    #delta = beamDeflection(x,E,b,d + as.numeric(d_data),P)
-    #dt_data = cbind(dt_coords, data.frame("D" = delta))
+    # Calculate displacement at these points, given the "true" beam depth
+    delta = cantilever_beam(x=x,E=E,b=b,d = d_data,P=P, L=L)
+    dt_data = pd.DataFrame({"x": x, "delta" : delta})
   
-    # Generate synthetic, "observed" data by adding iid noise to the "true" displacement
-    #dt_data$data = dt_data$D + rnorm(nrow(dt_data), mean = 0, sd = sigma_e)
-  
-    # Use the below line to write observed data to a csv file if needed later
-    #write.csv(dt_data, "benchmark_observations.csv", row.names = FALSE)
-  
-    # Use the below line to load previously generated observed data from a csv file, if needed to reproduce past results
-    # dt_data = read.table("benchmark_observations.csv", header = TRUE, sep=',')
+    # Adding synthetic iid Gaussian noise to the "true" displacement
+    dt_data.delta = dt_data.delta + norm.rvs(loc=0, scale = sigma_e, size = N_data+N_repeats)
+    
+    # ------------------------------------------------------------------------------

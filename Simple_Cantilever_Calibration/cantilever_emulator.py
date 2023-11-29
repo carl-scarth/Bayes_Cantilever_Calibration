@@ -92,6 +92,13 @@ if __name__ == "__main__":
     # Extract untransformed inputs and outputs for the maximin sample
     x_train = x_all[ind,:]
     y_train = y_all[ind]
+    
+    # If using Pandas dataframe (haven't changed any of the above code so may be able to do this also)
+    x_train = pd.DataFrame(x_train, columns = inp_str)
+    y_train = pd.Series(y_train, name="displacement")
+    print(x_train)
+    print(y_train)
+    asdasds
 
 # ------------------------------------------------------------------------------
 #                        Plot the Design of Experiments
