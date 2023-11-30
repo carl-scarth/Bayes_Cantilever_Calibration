@@ -114,9 +114,14 @@ if __name__ == "__main__":
 #              Fit emulator using Maximum Likelihood Estimation
 #-------------------------------------------------------------------------------
 
-    kernel = ConstantKernel(constant_value=0.5,constant_value_bounds=(1e-5,10))*RBF(length_scale=tuple(0.1 for i in range(d)), length_scale_bounds=(0.1,2.0))
-    # Default alpha (nugget) = 1e-10
+    kernel = ConstantKernel(constant_value=1.0,constant_value_bounds=(1e-5,10.0))*RBF(length_scale=tuple(0.5 for i in range(d)), length_scale_bounds=(1e-5,10.0))
     gp_MLE = GaussianProcessRegressor(kernel=kernel, alpha = 1e-8, normalize_y = False, n_restarts_optimizer=1000).fit(x_trans, y_trans)
+
+    print(gp_MLE)
+    sasdsads
+    # Happy with the Kernel - consider reducing the number of restarts in the regressor
+    # Make some predictions and expose the optimised hyperparameters
+
     # Keep looking at Kernel functions - check if the paameters I've used make sense, also make predictions. Could also try using default values
     # Note, I might have broken the below code by changing to scikit learn preprocessing which assumes different shape to pymc
 
