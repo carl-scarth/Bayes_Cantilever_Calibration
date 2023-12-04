@@ -1,9 +1,16 @@
-from pyexpat.errors import XML_ERROR_ENTITY_DECLARED_IN_PE
 import numpy as np
+import pandas as pd
 
 # Code for determining a random subset of points from a pandas dataframe which maximises the minimum distace between points
-# Should be easyto modify for pandas using df.sample()
+# Should be easy to modify for pandas using df.sample()
 def rand_maximin(x, N_sam, N_iter):
+    # If not already, convert data to the correct format, or raise exception
+    if isinstance(x, pd.DataFrame):
+        print("pandas dataframe")
+        x = x.to_numpy()
+    elif not isinstance(x, np.ndarray):
+        raise Exception("Please input either a numpy array or pandas DataFrame")
+    
     # Take a random subset of length N_sam for dataframe x, then
     # iteratively add random points if they increase the minimum distance 
     # between neighbouring points, reject these otherwise
