@@ -2,21 +2,22 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import ConstantKernel, RBF
-from matplotlib import rcParams
+from scipy.stats import halfnorm, invgamma
 import pymc as pm
 import arviz as az
 import sys
 
 # Add the src directory to the pythonpath for loading shared modules
-src_path = "../source"
+src_path = "../source/"
 sys.path.insert(0, src_path)
-
 from cantilever_beam import *  # Import cantilever model
 from LHS_Design import transformed_LHS  # Import Latin Hypercube module
 from sample_prior import *
+from transform_input_output import standardise_output, rescale_output 
+import utils
 
 if __name__ == "__main__":
 
@@ -39,14 +40,8 @@ if __name__ == "__main__":
     x_train = transformed_LHS(inputs, N_train, sampler_package="scikit-optimize", sampler_kwargs={"lhs_type":"classic","criterion":"maximin", "iterations":10000})
     inp_str = [inp[0] for inp in inputs] # List of input variable names
 
-    # Plotting parameters
-    rcParams.update({'figure.figsize' : (8,6),
-                    'font.size': 16,
-                    'figure.titlesize' : 18,
-                    'axes.labelsize': 18,
-                    'xtick.labelsize': 15,
-                    'ytick.labelsize': 15,
-                    'legend.fontsize': 15})    
+    # set plot parameters
+    utils.set_plot_params()
 
 # ------------------------------------------------------------------------------
 #           Run the cantilever beam model for Design of experiments
@@ -92,11 +87,13 @@ if __name__ == "__main__":
     #y_mu = np.mean(y_train)
     #y_sd = np.std(y_train)
     #y_trans = (y_train - y_mu)/y_sd
+    y_trans, mu_y, sigma_y = standardise_output(y_train)
     
-    # Alternative code using scikit-learn
-    y_scaler = StandardScaler()
-    y_trans = y_scaler.fit_transform(y_train.reshape(-1,1)).reshape(-1)
-    print(y_trans)
+    # Alternative code using scikit-learn (annoying as can't use the same
+    # scaler to scale with and without the mean)
+    # y_scaler = StandardScaler()
+    # y_trans = y_scaler.fit_transform(y_train.reshape(-1,1)).reshape(-1)
+    
 
     # Normalise inputs such that training data lies on the unit hypercube
     # x_min = x_train.min(axis = 0)
@@ -114,16 +111,19 @@ if __name__ == "__main__":
 #              Fit emulator using Maximum Likelihood Estimation
 #-------------------------------------------------------------------------------
 
-    kernel = ConstantKernel(constant_value=1.0,constant_value_bounds=(1e-5,10.0))*RBF(length_scale=tuple(0.5 for i in range(d)), length_scale_bounds=(1e-5,10.0))
-    gp_MLE = GaussianProcessRegressor(kernel=kernel, alpha = 1e-8, normalize_y = False, n_restarts_optimizer=1000).fit(x_trans, y_trans)
-
-    print(gp_MLE)
-    sasdsads
-    # Happy with the Kernel - consider reducing the number of restarts in the regressor
-    # Make some predictions and expose the optimised hyperparameters
-
-    # Keep looking at Kernel functions - check if the paameters I've used make sense, also make predictions. Could also try using default values
-    # Note, I might have broken the below code by changing to scikit learn preprocessing which assumes different shape to pymc
+    # Construct a Kernel
+    kernel = ConstantKernel(constant_value=1.0,constant_value_bounds=(1e-5,100.0))*RBF(length_scale=tuple(0.5 for i in range(d)), length_scale_bounds=(1e-5,10.00))
+    # Create a Gaussian Process regressor object and fit to training data
+    gp_MLE = GaussianProcessRegressor(kernel=kernel, alpha = 1e-8, normalize_y = False, n_restarts_optimizer = 50).fit(x_trans, y_trans)
+    # Return predictive mean and standard deviation
+    mu_pred_MLE, sigma_pred_MLE = gp_MLE.predict(x_pred_trans, return_std=True)
+    # Rescale predictions
+    mu_pred_MLE = rescale_output(mu_pred_MLE, mu_y = mu_y, sigma_y = sigma_y)
+    sigma_pred_MLE = rescale_output(sigma_pred_MLE, sigma_y=sigma_y, std=True)
+    # Extract hyperparameters of fitted Gaussian process
+    sigma_em_MLE = np.sqrt(gp_MLE.kernel_.get_params()["k1__constant_value"])
+    # Is there a factor of 2 in one of the covariance functions?
+    ls_MLE = gp_MLE.kernel_.get_params()["k2__length_scale"]
 
 #-------------------------------------------------------------------------------
 #                    Fit emulator using Bayesian inference 
@@ -216,18 +216,26 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=[16,6])
     #ax.hist(lambda_em, bins = 49, color="tab:green",edgecolor="black")
     #ax.set_title("Emulator Precision")
-    
+    sigma_plot = np.linspace(0.0,6.0,100)
     ax.hist(sigma_em, bins = 49, density = True, color="tab:green",edgecolor="black")
+    ax.plot(sigma_plot, halfnorm.pdf(sigma_plot), lw = 2, color = "blue") # Add prior plot
+    ax.plot([sigma_em_MLE, sigma_em_MLE], [0, ax.get_ylim()[1]], "--k", linewidth=2)
+    ax.annotate("MLE solution", xy = (sigma_em_MLE, 0.5*ax.get_ylim()[1]), xytext = (sigma_em_MLE-2.0, 0.75*ax.get_ylim()[1]), arrowprops = dict(facecolor="black",shrink=0.05, width = 1.0))
     ax.set_title("Emulator standard deviation")
     ax.set_xlabel("Sigma_em")
     ax.set_ylabel("Density")
 
     fig2, axs2 = plt.subplots(1,d,figsize=[20,6])
+    ls_plot = np.linspace(0.0,4.0,100)
     for i, ax2 in enumerate(axs2):
     #    ax2.hist(rho[:,i], bins = 49, color = "tab:blue", edgecolor="black")
-        ax2.hist(ls[:,i], bins = 49, color = "tab:blue", edgecolor="black")
+        ax2.hist(ls[:,i], bins = 49, density=True, color = "tab:blue", edgecolor="black")
+        ax2.plot([ls_MLE[i], ls_MLE[i]],  [0, 0.9*ax2.get_ylim()[1]], "--k", linewidth=2)
+        ax2.plot(ls_plot, invgamma.pdf(ls_plot, 4.0, loc = 0.0, scale = 4.0), lw = 2, color = "blue")
+        ax2.annotate("MLE solution", xy = (ls_MLE[i], 0.5*ax2.get_ylim()[1]), xytext = (0.1*ax2.get_xlim()[1], 0.95*ax2.get_ylim()[1]), arrowprops = dict(facecolor="black",shrink=0.05, width = 1.0))
         ax2.set_xlabel("ls_" + str(i))
         ax2.set_ylabel("Density")
+    
     #fig3, axs3 = plt.subplots(1,3, figsize=[16,6])
     # for i, ax3 in enumerate(axs3):
     #ax3.hist(beta[:,i], bins = 49, color = "tab:orange", edgecolor="black")
@@ -270,42 +278,44 @@ if __name__ == "__main__":
 #           Transform back onto correct scale then plot histogram
 #------------------------------------------------------------------------------
 
-    # Take average across posterior sample
+    # Take average across posterior sample and compare against histogram of 
+    # closed-form solutions 
 
-# Compare against MLE? Add point-estimate to plot?
-# Compare histogram
     # Convert the mean and standard deviation back onto the true scale
     # mu_pred = mu_pred*y_sd + y_mu
     # sigma_pred = sigma_pred*y_sd
-    mu_pred = y_scaler.inverse_transform(mu_pred.reshape(-1,1)).reshape(-1)
-    print(mu_pred)
-    # with_mean might not work in this context
-    sigma_pred = y_scaler.inverse_transform(sigma_pred.reshape(-1,1), with_mean = False).reshape(-1)
-    print(sigma_pred)
+    # mu_pred = y_scaler.inverse_transform(mu_pred.reshape(-1,1)).reshape(-1)
+    # with_mean does not work in this context
+    # sigma_pred = y_scaler.inverse_transform(sigma_pred.reshape(-1,1), with_mean = False).reshape(-1)
+    mu_pred = rescale_output(mu_pred, mu_y = mu_y, sigma_y = sigma_y)
+    sigma_pred = rescale_output(sigma_pred, sigma_y=sigma_y, std=True)
+    
 
     fig3, ax3 = plt.subplots(figsize=[10,6])
     # Plot histogram of true displacement
     ax3.hist(y_pred, bins = 49, color = "salmon", edgecolor="black", density=True, label = "Beam model")
     # Slightly reduce the smoothness of the kde, and truncate a little belong extreme values
-    sns.kdeplot(mu_pred, color="blue", linewidth=3, bw_adjust=0.95, cut=0.1, ax=ax3, label = "Emulator")
+    sns.kdeplot(mu_pred, color="blue", linewidth=3, bw_adjust=0.95, cut=0.1, ax=ax3, label = "Bayesian Emulator")
+    sns.kdeplot(mu_pred_MLE, color = "tab:green", linewidth=3, linestyle="--", bw_adjust=0.95, cut=0.1, ax=ax3, label = "MLE Emulator")
     ax3.set_xlabel("Tip displacement (mm)")
     ax3.set_ylabel("Density")
     ax3.set_title("Uncertainty propagation results")
     ax3.legend()
 
     fig4,ax4 = plt.subplots(figsize=[10,6])
-    ax4.hist(sigma_pred, bins=49, color = "tab:red", edgecolor="black", density=True)
+    ax4.hist(sigma_pred, bins=49, color = "tab:red", edgecolor="black", density=True, label = "Bayesian predicive standard deviation")
+    sns.kdeplot(sigma_pred_MLE, color = "tab:green", linewidth=3, bw_adjust=0.95, cut=0.1, ax=ax4, label = "MLE predictive standard deviation")
     ax4.set_xlabel("Emulator standard deviation (m)")
     ax4.set_ylabel("Density")
     ax4.set_title("Emulator standard deviation")
+    ax4.legend()
     
     plt.show()
 
     # Put point estimate against posteriors
-    # Play aroud with other formulations of model
+    # Play aroud with other formulations of model in pymc
     # Also add prior plots on posterior histograms.
     # Ideally I would define the prior outside of the context menu then sample some draws from this so autmoated. (see marginal_likelihood example in Thomas' folder)
     # It isn't possible to do this outside of the context menu
     # Just manually implement for now
     # Consider working with pandas
-    # This code is pretty good. Move onto other example then tidy up later
