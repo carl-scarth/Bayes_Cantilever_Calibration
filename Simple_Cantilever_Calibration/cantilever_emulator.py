@@ -18,6 +18,7 @@ from cantilever_beam import *  # Import cantilever model
 from LHS_Design import transformed_LHS  # Import Latin Hypercube module
 from maximin import *
 import transform_input_output as tio
+import utils
 
 if __name__ == "__main__":
 
@@ -45,14 +46,8 @@ if __name__ == "__main__":
     N_plot = 100   # Number of points at which beam deflection is plotted
     N_maximin = 50 # Number of model output data points which are to be retained for training the emulator 
     
-    # Plotting parameters
-    rcParams.update({'figure.figsize' : (8,6),
-                    'font.size': 16,
-                    'figure.titlesize' : 18,
-                    'axes.labelsize': 18,
-                    'xtick.labelsize': 15,
-                    'ytick.labelsize': 15,
-                    'legend.fontsize': 15})
+    # Set plotting parameters
+    utils.set_plot_params()
 
     # ------------------------------------------------------------------------------
     #           Run the cantilever beam model for Design of experiments
@@ -95,10 +90,7 @@ if __name__ == "__main__":
     
     # If using Pandas dataframe (haven't changed any of the above code so may be able to do this also)
     x_train = pd.DataFrame(x_train, columns = inp_str)
-    y_train = pd.Series(y_train, name="displacement")
-    print(x_train)
-    print(y_train)
-    asdasds
+    y_train = pd.Series(y_train, name="Displacement")
 
 # ------------------------------------------------------------------------------
 #                        Plot the Design of Experiments
@@ -107,7 +99,8 @@ if __name__ == "__main__":
     N_grades = 8 # Number of different values to divide the output into
     
     # Create data frame as Seaborn only works with Pandas
-    plot_frame = pd.concat((pd.DataFrame(x_train,columns=inp_str),pd.DataFrame(y_train,columns=["Displacement"])),axis=1)
+    # plot_frame = pd.concat((pd.DataFrame(x_train,columns=inp_str),pd.DataFrame(y_train,columns=["Displacement"])),axis=1)
+    plot_frame = pd.concat((x_train, y_train),axis=1)
     # Bin the displacement into intervals, and create a new categorical column
     # in the dataframe stating which interval each point lies within
     plot_frame["Category"] = pd.cut(plot_frame["Displacement"],N_grades)
@@ -115,11 +108,11 @@ if __name__ == "__main__":
     # displacement value of each point
     fig2, axes2 = plt.subplots(1,2, sharey = True)
     fig2.suptitle("Training data before and after maximin search")
+    sns.scatterplot(x=inp_str[0], y=inp_str[1], data=plot_frame, ax=axes2[1], hue="Category", legend=False, palette = sns.color_palette("viridis",N_grades))
     # There are only two inputs so it is more appropriate to use scatterplot thann pairplot
     plot_frame = pd.concat((pd.DataFrame(x_all, columns = inp_str),pd.DataFrame(y_all,columns=["Displacement"])),axis=1)
     plot_frame["Category"] = pd.cut(plot_frame["Displacement"],N_grades)
     sns.scatterplot(x=inp_str[0], y=inp_str[1], data=plot_frame, ax=axes2[0], hue="Category", legend=False, palette = sns.color_palette("viridis",N_grades))
-    sns.scatterplot(x=inp_str[0], y=inp_str[1], data=plot_frame, ax=axes2[1], hue="Category", legend=False, palette = sns.color_palette("viridis",N_grades))
 
 # ------------------------------------------------------------------------------
 #          Generate a set of points at which predictions are required
@@ -132,13 +125,18 @@ if __name__ == "__main__":
 
     # Take the union of these points with the training data - we want to verify
     # that uncertainty is zero at these points
-    x_grid = np.sort(np.unique(np.concatenate((x_grid,x_train[:,1]))))
-    t_grid = np.sort(np.unique(np.concatenate((t_grid,x_train[:,0]))))
-
+    # x_grid = np.sort(np.unique(np.concatenate((x_grid,x_train[:,1]))))
+    # t_grid = np.sort(np.unique(np.concatenate((t_grid,x_train[:,0]))))
+    x_grid = np.sort(np.unique(np.concatenate((x_grid,x_train["x"].to_numpy()))))
+    t_grid = np.sort(np.unique(np.concatenate((t_grid,x_train["d"].to_numpy()))))
     # Expand points into a grid
     x_grid, t_grid = np.meshgrid(x_grid,t_grid)
-    x_pred = np.concatenate((t_grid.reshape(-1,1),x_grid.reshape(-1,1)),axis=1)
+    
+#    x_pred = np.concatenate((t_grid.reshape(-1,1),x_grid.reshape(-1,1)),axis=1)
+    x_pred = pd.DataFrame({"d" : t_grid.reshape(-1), "x" : x_grid.reshape(-1)})
     N_pred = x_pred.shape[0]
+    
+    fsdfdsf
 
 # ------------------------------------------------------------------------------
 #                           Standardise the data
