@@ -17,7 +17,7 @@ sys.path.insert(0, src_path)
 from cantilever_beam import *  # Import cantilever model
 from LHS_Design import transformed_LHS  # Import Latin Hypercube module
 from maximin import *
-import transform_input_output as tio
+from transform_input_output import normalise_inputs, standardise_outputs, rescale_output
 import utils
 
 if __name__ == "__main__":
@@ -132,23 +132,24 @@ if __name__ == "__main__":
     # Expand points into a grid
     x_grid, t_grid = np.meshgrid(x_grid,t_grid)
     
-#    x_pred = np.concatenate((t_grid.reshape(-1,1),x_grid.reshape(-1,1)),axis=1)
+    # x_pred = np.concatenate((t_grid.reshape(-1,1),x_grid.reshape(-1,1)),axis=1)
     x_pred = pd.DataFrame({"d" : t_grid.reshape(-1), "x" : x_grid.reshape(-1)})
     N_pred = x_pred.shape[0]
     
-    fsdfdsf
 
 # ------------------------------------------------------------------------------
 #                           Standardise the data
 # ------------------------------------------------------------------------------
 
+    asdkasdasdsad
+    # DO THESE FUNCTIONS WORK FOR PANDAS? MODIFY
     # Standardise outputs to have zero mean and unit sample variance
-    y_trans, y_mu, y_sd = tio.standardise_output(y_train)
+    y_trans, y_mu, y_sd = standardise_output(y_train)
     # Normalise inputs such that training data is on the unit hypercube
-    x_trans, x_min, x_max = tio.normalise_inputs(x_train)
+    x_trans, x_min, x_max = normalise_inputs(x_train)
     
     # Normalise test data in the same way as the training data for consistency
-    x_pred_trans = tio.normalise_inputs(x_pred, x_min = x_min, x_max = x_max)
+    x_pred_trans = normalise_inputs(x_pred, x_min = x_min, x_max = x_max)
 
 #-------------------------------------------------------------------------------
 #                    Fit emulator using Bayesian inference 
