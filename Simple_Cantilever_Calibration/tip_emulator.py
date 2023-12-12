@@ -121,7 +121,6 @@ if __name__ == "__main__":
     mu_pred_MLE = rescale_output(mu_pred_MLE, mu_y = mu_y, sigma_y = sigma_y)
     sigma_pred_MLE = rescale_output(sigma_pred_MLE, sigma_y=sigma_y, std=True)
     # Extract hyperparameters of fitted Gaussian process
-    sigma_em_MLE = np.sqrt(gp_MLE.kernel_.get_params()["k1__constant_value"])
     # Is there a factor of 2 in one of the covariance functions?
     ls_MLE = gp_MLE.kernel_.get_params()["k2__length_scale"]
 
