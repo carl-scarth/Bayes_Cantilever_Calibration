@@ -13,7 +13,7 @@ from cantilever_beam import *  # Import cantilever model
 from LHS_Design import transformed_LHS  # Import Latin Hypercube module
 from maximin import *
 from Prior import *
-import transform_input_output as tio
+from transform_input_output import standardise_output, rescale_output 
 
 if __name__ == "__main__":
 
@@ -86,3 +86,11 @@ if __name__ == "__main__":
     dt_data.delta = dt_data.delta + norm.rvs(loc=0, scale = sigma_e, size = N_data+N_repeats)
     
     # ------------------------------------------------------------------------------
+    
+    # vvvv HOW TO CREATE NUMPY KERNEL FUNCTION FOR GP - THIS IS WHAT I NEED
+    # LOOKS QUITE OLD SO MAY BE OUT OF DATE
+    # https://www.pymc.io/projects/docs/en/v3/pymc-examples/examples/gaussian_processes/gaussian_process.html
+    # sIMILAR
+    # https://www.pymc.io/projects/docs/en/v3/pymc-examples/examples/gaussian_processes/GP-MeansAndCovs.html
+    # THIS IS THE MORE UP TO DATE VERSION
+    # https://www.pymc.io/projects/docs/en/v5.10.1/learn/core_notebooks/pymc_pytensor.html
