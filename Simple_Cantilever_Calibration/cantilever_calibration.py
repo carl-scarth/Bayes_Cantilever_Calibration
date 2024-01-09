@@ -87,6 +87,31 @@ if __name__ == "__main__":
     
     # ------------------------------------------------------------------------------
     
+    #-------------------------------------------------------------------------------
+  
+    # Plot observed displacements
+    fig, ax = plt.subplots()
+      
+    # define points at which the "true" displacement is to be plotted
+    x_plot = [i/(N_plot-1)*L for i in range(N_plot)]
+        # run beam model to determine "true" displacement at these points
+    delta_plot = cantilever_beam(x=x_plot,E=E,b=b,d=d_data,P=P,L=L)
+    # plot the "observed" data
+    ax.plot(dt_data.x.values, dt_data.delta.values,"rx",markersize=12, markeredgewidth=2, label="Experimental data")
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("displacement (m)")
+    ax.set_xlim([0,L])
+    ax.set_title("Experimental data vs \"true\" displacement")
+    plt.show()
+    asdsad
+    # plot the "true" displacements
+    #lines(x_plot,defplot,"lwd"=2,"col"="blue")
+    # plot legend
+    #legend(x = "topright",legend = c("true response","observed response"),col=c("blue","red"),pch=c(NA,4),lty = c(1,NA),lwd = c(2,2))
+    # Also add training data priors?
+
+
+    plt.show()
     # vvvv HOW TO CREATE NUMPY KERNEL FUNCTION FOR GP - THIS IS WHAT I NEED
     # LOOKS QUITE OLD SO MAY BE OUT OF DATE
     # https://www.pymc.io/projects/docs/en/v3/pymc-examples/examples/gaussian_processes/gaussian_process.html
