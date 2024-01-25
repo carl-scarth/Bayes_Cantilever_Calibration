@@ -28,6 +28,8 @@ if __name__ == "__main__":
     N_train = 30        # number of emulator training data points
     N_plot = 100        # Number of points at which beam deflection is plotted
     N_maximin = 50      # Number of model output data points which are to be retained for training the emulator
+    p = 1               # Number of controlled inputs
+    q = 1               # Number of uncertain calibration inputs
   
     # Define magnitude of the synthetic noise which will be added to model outputs to get "observed" data
     sigma_e = 0.00025 # standard deviation
@@ -85,6 +87,7 @@ if __name__ == "__main__":
   
     # Adding synthetic iid Gaussian noise to the "true" displacement
     dt_data.delta = dt_data.delta + norm.rvs(loc=0, scale = sigma_e, size = N_data+N_repeats)
+    y = dt_data.delta
     
     # ------------------------------------------------------------------------------
     #              Generate simulation data for training emulator
@@ -95,16 +98,17 @@ if __name__ == "__main__":
     
     # Generate a set of samples of uncertain input d via Latin Hypercube Sampling
     x_train = transformed_LHS(inputs, N_train, sampler_package="scikit-optimize", sampler_kwargs={"lhs_type":"classic","criterion":"maximin", "iterations":100})
+    
     inp_str = [inp[0] for inp in inputs] # List of input variable names
     inp_str.append("x")
 
     # Run the cantilever model n_simulations times
-    y_all_plot = np.empty(shape = (N_plot, N_train))
+    eta_all_plot = np.empty(shape = (N_plot, N_train))
     for i, x_i in enumerate(x_train):
-        y_all_plot[:,i] = cantilever_beam(x=sim_coords,E=E,b=b,d = x_i[0],P=P, L=L)
+        eta_all_plot[:,i] = cantilever_beam(x=sim_coords,E=E,b=b,d = x_i[0],P=P, L=L)
   
     # Reshape all n_simulations x N_train points into a vector
-    y_all = y_all_plot.T.reshape((-1))
+    eta_all = eta_all_plot.T.reshape((-1))
     
     # Create a matrix matching each training data point (x-coordinate and depth) to each output value
     sim_coords = np.array(sim_coords,ndmin=2).T
@@ -120,11 +124,12 @@ if __name__ == "__main__":
     x_maximin, ind, d_min = maximin(x_all_trans, N_maximin, 15000, replace_method="random")
     # Extract untransformed inputs and outputs for the maximin sample
     x_train = x_all[ind,:]
-    y_train = y_all[ind]
+    eta_train = eta_all[ind]
   
     # If using Pandas dataframe (haven't changed any of the above code so may be able to do this also)
     x_train = pd.DataFrame(x_train, columns = inp_str)
-    y_train = pd.Series(y_train, name="Displacement")
+    eta_train = pd.Series(eta_train, name="Displacement")
+    m = x_train.shape[0]
 
     # ------------------------------------------------------------------------------
     #              Plot the Design of Experiments and experimental data
@@ -136,10 +141,12 @@ if __name__ == "__main__":
       
     # define points at which the "true" displacement is to be plotted
     x_plot = [i/(N_plot-1)*L for i in range(N_plot)]
-        # run beam model to determine "true" displacement at these points
+    x_pred = np.array(x_plot, ndmin=2).T # We want to make calibrated predictions at the coordinates of the plot
+    n_pred = x_pred.shape[0]   # number of predictions
+    # run beam model to determine "true" displacement at these points
     delta_plot = cantilever_beam(x=x_plot,E=E,b=b,d=d_data,P=P,L=L)
-    ax.plot(sim_coords,y_all_plot[:,0],"-c", linewidth=0.5, label = "Prior simulation")
-    ax.plot(sim_coords,y_all_plot[:,1:],"-c", linewidth=0.5)
+    ax.plot(sim_coords,eta_all_plot[:,0],"-c", linewidth=0.5, label = "Prior simulation")
+    ax.plot(sim_coords,eta_all_plot[:,1:],"-c", linewidth=0.5)
     ax.plot(x_plot, delta_plot,"-b",linewidth=2, label="True response")
     ax.plot(dt_data.x.values, dt_data.delta.values,"rx",markersize=12, markeredgewidth=2, label="Experimental data")
     ax.set_xlabel("x (m)")
@@ -153,7 +160,7 @@ if __name__ == "__main__":
     # in the dataframe stating which interval each point lies within
     N_grades = 8 # Number of different values to divide the output into
     # Create data frame as Seaborn only works with Pandas
-    plot_frame = pd.concat((x_train, y_train),axis=1)
+    plot_frame = pd.concat((x_train, eta_train),axis=1)
     plot_frame["Category"] = pd.cut(plot_frame["Displacement"],N_grades)
     # Create a pairs plot of the training data, coloured according to the 
     # displacement value of each point
@@ -161,17 +168,27 @@ if __name__ == "__main__":
     fig2.suptitle("Training data before and after maximin search")
     sns.scatterplot(x=inp_str[0], y=inp_str[1], data=plot_frame, ax=axes2[1], hue="Category", legend=False, palette = sns.color_palette("viridis",N_grades))
     # There are only two inputs so it is more appropriate to use scatterplot thann pairplot
-    plot_frame = pd.concat((pd.DataFrame(x_all, columns = inp_str),pd.DataFrame(y_all,columns=["Displacement"])),axis=1)
+    plot_frame = pd.concat((pd.DataFrame(x_all, columns = inp_str),pd.DataFrame(eta_all,columns=["Displacement"])),axis=1)
     plot_frame["Category"] = pd.cut(plot_frame["Displacement"],N_grades)
     sns.scatterplot(x=inp_str[0], y=inp_str[1], data=plot_frame, ax=axes2[0], hue="Category", legend=False, palette = sns.color_palette("viridis",N_grades))
 
-    # From here!!
+    # ------------------------------------------------------------------------------
+    #                              Standardise the data
+    # ------------------------------------------------------------------------------
+    
+    # Standardise outputs to have zero mean and unit sample variance
+    eta_trans, mu_eta, sd_eta = standardise_output(eta_train)
 
-    asdsadsa
+    # Strandardise the experimental data using the same values for consistency
+    y_trans = standardise_output(y, mu_y = mu_eta, sigma_y = sd_eta)
 
+    # Normalise inputs such that training data is on the unit hypercube
+    x_trans, x_min, x_max = normalise_inputs(x_train)
 
+    # Normalise test data in the same way as the training data for consistency
+    x_pred_trans = normalise_inputs(x_pred, x_min = x_min[1], x_max = x_max[1])
+  
     plt.show()
-    # If I want
     # vvvv HOW TO CREATE NUMPY KERNEL FUNCTION FOR GP - THIS IS WHAT I NEED
     # LOOKS QUITE OLD SO MAY BE OUT OF DATE
     # https://www.pymc.io/projects/docs/en/v3/pymc-examples/examples/gaussian_processes/gaussian_process.html
@@ -179,3 +196,4 @@ if __name__ == "__main__":
     # https://www.pymc.io/projects/docs/en/v3/pymc-examples/examples/gaussian_processes/GP-MeansAndCovs.html
     # THIS IS THE MORE UP TO DATE VERSION
     # https://www.pymc.io/projects/docs/en/v5.10.1/learn/core_notebooks/pymc_pytensor.html
+    # WORTH DOING SOME MLE TO SEE IF POSSIBLE?
