@@ -1,6 +1,6 @@
 import numpy as np
 import mogp_emulator as mogp
-from scipy.stats import norm, uniform, loguniform, lognorm
+from scipy.stats import norm, uniform, loguniform, lognorm, gamma
 from scipy.stats.qmc import LatinHypercube
 from skopt.space import Space
 from skopt.sampler import Lhs
@@ -60,5 +60,8 @@ def transformed_LHS(input_list, N_train, sampler_package = "scipy", sampler_kwar
                 xLHS[:,i] = [uniform.ppf(xij, loc = item.lb, scale = (item.ub - item.lb)) for xij in FLHS[:,i]]
             elif item.distribution == 'Loguniform':
                 xLHS[:,i] = [loguniform.ppf(xij, item.lb, item.ub) for xij in FLHS[:,i]]
+            elif item.distribution == 'Loggamma':
+                # Take inverse of gamma pdf then take the exponent (as this is an inverse transformation)
+                xLHS[:,i] = [np.exp(gamma.ppf(xij, item.shape, scale = 1.0/(item.rate))) for xij in FLHS[:,i]]
     
     return(xLHS)

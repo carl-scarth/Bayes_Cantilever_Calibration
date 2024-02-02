@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 
 class Prior:
 # Define class of prior distribution objects containing type of distribution all important statistical attributes
@@ -18,6 +19,10 @@ class Prior:
             # If Uniform or loguniform, the prior is described by a lower and upper bound
             self.lb = param_1
             self.ub = param_2
+        elif (self.distribution == 'Loggamma'):
+            # Loggamma described by shape and rate
+            self.shape = param_1
+            self.rate = param_2
 
     @property
     def sigma(self):
@@ -40,7 +45,10 @@ class Prior:
             return np.exp(self.mu - 3.0*self.s)
         elif (self.distribution == 'Uniform') or (self.distribution == 'Loguniform'):
             return self.lb
-        
+        else:
+            warnings.warn("Min and max have not been implemented for this distribution yet")
+            return None
+
     @property
     def max(self):
         if self.distribution == 'Gaussian':
@@ -49,3 +57,6 @@ class Prior:
             return np.exp(self.mu + 3.0*self.s)
         elif (self.distribution == 'Uniform') or (self.distribution == 'Loguniform'):
             return self.ub
+        else:
+            warnings.warn("Min and max have not been implemented for this distribution yet")
+            return None
