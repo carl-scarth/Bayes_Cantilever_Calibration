@@ -79,7 +79,6 @@ if __name__ == "__main__":
 
     # For speed we need to cherry-pick points. Choose observations to satisfy the maximin criterion
     # First transform inputs onto unit hypercube (note - we can also use scikit-learn.preprocessing)
-    # Normalise inputs such that training data lies on the unit hypercube
     x_all_trans, *_ = normalise_inputs(x_all)
     # not very efficient - could speed things up by optimising choice of replacement, rather than
     # selecting at random. An obvious choice would be to replace one of the points with the closest 

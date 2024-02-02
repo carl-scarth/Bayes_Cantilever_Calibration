@@ -10,7 +10,7 @@ def normalise_inputs(x, x_min = [], x_max = [], std = False):
   # Assumes data x is a N x d numpy array, with axis 0 being a 
   # sample of a d-dimensional input vector
   maxmin_out = False
-  if len(x_min) == 0:
+  if not x_min:
     maxmin_out = True
     x_min = x.min(axis = 0)
     x_max = x.max(axis = 0)
@@ -31,18 +31,18 @@ def normalise_inputs(x, x_min = [], x_max = [], std = False):
 # There is an option to provide the mean vector and standard deviation, 
 # otherwise these are calculated internally
 def standardise_output(y, mu_y = [], sigma_y = [], std = False):
-  if len(mu_y) < 1 or len(sigma_y) < 1:
+  if not(mu_y and sigma_y):
     musd_out = True
   else:
     musd_out = False
 
   if not std:
-    if len(mu_y) < 1:
+    if not mu_y:
       mu_y = np.mean(y)
     
     y = y - mu_y
 
-  if len(sigma_y) < 1:
+  if not sigma_y:
     sigma_y = np.std(y)
 
   y_scale = y/sigma_y
