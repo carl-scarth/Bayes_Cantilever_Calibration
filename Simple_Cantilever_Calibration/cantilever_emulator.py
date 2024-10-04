@@ -193,6 +193,7 @@ if __name__ == "__main__":
         mean_func = pm.gp.mean.Zero()
         # cov_func = pm.gp.cov.Constant(1.0/lambda_em) * pm.gp.cov.ExpQuad(3,ls=2.0/pt.sqrt(beta)) # + pm.gp.cov.WhiteNoise(sigma_noise**2)
         cov_func = pm.gp.cov.Constant(sigma_em**2) * pm.gp.cov.ExpQuad(2,ls=ls)
+
         # In the long run I'd rather be able to implement my own covariance matrices,
         # but this requires figuring out pytensor. Look through documentation.
         # Also discussion topics might help
@@ -200,7 +201,7 @@ if __name__ == "__main__":
         #----------------------------------------------------------------------
         
         # Implementation using multivariate normal:
-        # y_ = pm.MvNormal("y", mu=mean_func(x_trans), cov=cov_func(x_trans), observed = y_trans)
+        # y_ = pm.MvNormal("y", mu=mean_func(x_trans).eval(), cov=cov_func(x_trans).eval(), observed = y_trans)
             
         #----------------------------------------------------------------------
             
@@ -298,7 +299,7 @@ if __name__ == "__main__":
     pred_ind = np.random.choice(N_post,N_sub_sam, replace = False)
     mu_pred = np.empty((N_pred, N_sub_sam),float)
     sigma_pred = np.empty((N_pred, N_sub_sam),float)
-    # f_pred = np.empty((N_pred, N_sam_pred),float)
+    # f_pred = np.empty((N_pred, N_sub_sam),float)
 
     # Take N_sam_pred random samples from the posterior and generate a sample prediction
     for i, post_i in enumerate(pred_ind):

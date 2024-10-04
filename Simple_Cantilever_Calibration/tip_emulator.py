@@ -218,8 +218,8 @@ if __name__ == "__main__":
     sigma_plot = np.linspace(0.0,6.0,100)
     ax.hist(sigma_em, bins = 49, density = True, color="tab:green",edgecolor="black")
     ax.plot(sigma_plot, halfnorm.pdf(sigma_plot), lw = 2, color = "blue") # Add prior plot
-    ax.plot([sigma_em_MLE, sigma_em_MLE], [0, ax.get_ylim()[1]], "--k", linewidth=2)
-    ax.annotate("MLE solution", xy = (sigma_em_MLE, 0.5*ax.get_ylim()[1]), xytext = (sigma_em_MLE-2.0, 0.75*ax.get_ylim()[1]), arrowprops = dict(facecolor="black",shrink=0.05, width = 1.0))
+    #ax.plot([sigma_em_MLE, sigma_em_MLE], [0, ax.get_ylim()[1]], "--k", linewidth=2)
+    #ax.annotate("MLE solution", xy = (sigma_em_MLE, 0.5*ax.get_ylim()[1]), xytext = (sigma_em_MLE-2.0, 0.75*ax.get_ylim()[1]), arrowprops = dict(facecolor="black",shrink=0.05, width = 1.0))
     ax.set_title("Emulator standard deviation")
     ax.set_xlabel("Sigma_em")
     ax.set_ylabel("Density")

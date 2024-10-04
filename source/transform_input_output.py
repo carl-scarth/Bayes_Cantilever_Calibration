@@ -5,20 +5,26 @@ import numpy as np
 # vector) minimum and maximum values x_min and x_max
 # std indicates whether the x is a standard deviation, in which case it isn't
 # necessary to subtract the minimum
-def normalise_inputs(x, x_min = [], x_max = [], std = False):
+def normalise_inputs(x, std = False, **kwargs):
   # Calcuate maximum and minimum values of data if required
   # Assumes data x is a N x d numpy array, with axis 0 being a 
   # sample of a d-dimensional input vector
   maxmin_out = False
-  if not x_min:
+  if "x_min" not in kwargs.keys():
     maxmin_out = True
     x_min = x.min(axis = 0)
     x_max = x.max(axis = 0)
-  
+  else:
+    x_min = kwargs["x_min"]
+    try:
+        x_max = kwargs["x_max"]
+    except:
+        raise Exception("Please also specify x_max")
+
   if not std:
     x = x - x_min
   x_norm = x/(x_max-x_min)
- 
+
   if maxmin_out:
     return((x_norm, x_min, x_max))
   else:
@@ -61,3 +67,16 @@ def rescale_output(y_scale, mu_y = 0.0, sigma_y = 1.0, std = False):
     y = y + mu_y
 
   return(y)
+
+
+# Convert inputs which have been normalised to lie on the unit hypercube back
+# onto their original scale using (scalar or vector) minimum and maximum values 
+# std indicates whether the x is a standard deviation, in which case it isn't
+# necessary to subtract the minimum
+def rescale_inputs(x_norm, x_min, x_max, std = False):
+  # Put maximum and minimum values into the correct format
+  x = x_norm*(x_max-x_min)
+  if not std:
+    x = x + x_min
+  
+  return(x)
