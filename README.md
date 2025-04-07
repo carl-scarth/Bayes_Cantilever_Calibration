@@ -1,2 +1,4 @@
 # Bayesian_Model_Calibration
 # This is a repository of example problems, and code written or adapted to address the "Integration and Methodology Validation" Research Challenge, of the EPSRC CerTest programme grant, EP/S017038/1. This repository specifically aims to address challenges associated with fusing data from high-fidelity, multi-scale mechanical models with measurements from data rich structural tests, within a Bayesian framework.
+
+Example 2D problem with synthetic data. Considers displacement of a cantilevered Euler-Bernoulli beam, with rectangular cross section, and a point load at a tip. This model has been parametrised as a function of an x coordinate (length-wise direction) and the depth of the cross section, thereby lending itself to making 1D/2D plots for the purpose of demonstrating the calibration/emulator codes.
