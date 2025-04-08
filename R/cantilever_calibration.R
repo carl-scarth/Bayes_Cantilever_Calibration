@@ -8,11 +8,11 @@
   
   # Set current working directory. This should be modified to match the directory
   # at which the stan code and any data is stored
-  setwd("C:/Users/cs2361/Documents/R/Gaussian Processes")
+  setwd("C:/Users/cs2361/Documents/Bayes_Cantilever_Calibration/R/")
   
   # include functions which are called in this code
-  source("cantileverBeam.R")
-  source("estimate_mode.R")
+  source("src/cantileverBeam.R")
+  source("src/estimate_mode.R")
   
   #-------------------------------------------------------------------------------
   
