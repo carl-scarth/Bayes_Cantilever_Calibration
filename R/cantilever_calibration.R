@@ -18,7 +18,7 @@
   
   # Set up model parameters
   
-  # First we set up the parameters
+  # First set up the parameters
   n_data = 10          # number of experimental data points
   n_repeats = 3        # number of repeated data points
   n_simulations = 30   # number of simulations
@@ -57,7 +57,7 @@
   dt_coords = data.table(x)
   
   # Calculate displacement at these points, given the "true" value of depth, using the separate "cantileverBeam.R" function
-  delta = beamDeflection(x,E,b,d + as.numeric(d_data),P)
+  delta = beamDeflection(x,E,b,d + as.numeric(d_data),P,L)
   dt_data = cbind(dt_coords, data.frame("D" = delta))
   
   # Generate synthetic, "observed" data by adding iid noise to the "true" displacement
@@ -78,7 +78,7 @@
   # define points at which the "true" displacement is to be plotted
   x_plot = seq(0,L,length.out = 100)
   # run beam model to determine "true" displacement at these points
-  defplot = beamDeflection(x_plot,E,b,d + as.numeric(d_data),P)
+  defplot = beamDeflection(x_plot,E,b,d + as.numeric(d_data),P,L)
   # plot the "observed" data
   plot(dt_data$x,dt_data$data,"type"="p","col"="red","pch"=4,"lwd"=2,cex=1,'xlab'='x coordinate (m)','ylab'="displacement (m)",cex.axis=1.3,cex.lab=1.5,'xlim'=c(0,L))
   # plot the "true" displacements
@@ -88,14 +88,7 @@
   
   #-------------------------------------------------------------------------------
   
-  # Set up simulations - here we try to represent the model output using a Gaussian process emulator
-  # Here we would normally do a Latin Hypercube or similar to generate emulator training data, but 
-  # we are only sampling one variable (depth) and so this is trivial. I assume
-  # we have limited control over the value of x at which we get output - an FE 
-  # model with mesh generated using a Latin Hypercube would look pretty weird, 
-  # and probably give bad output
-  
-  # Here I sample across the 1D depth variable by splitting its range into equal intervals,
+  # Sample across the 1D depth variable by splitting its range into equal intervals,
   # then sampling at random within each interval. This is reasonable given a uniform distribution. 
   
   # define n_simulations intervals of equal size in range [-0.1,0.1]
@@ -121,16 +114,15 @@
   dt_all_simulation = matrix(0, ncol = n_simulations, nrow = n_simulations)
   # running the cantilever model n_simulations times
   for (i in 1:n_simulations){
-    dt_all_simulation[,i] = beamDeflection(x_sim,E,b,d + as.numeric(d_simulation[i]),P)
+    dt_all_simulation[,i] = beamDeflection(x_sim,E,b,d + as.numeric(d_simulation[i]),P,L)
   }
   # reshape all simulated displacements into a vector, rather than a 2d grid. These are stored as follows:
   #[x_1-sim_1,...,x_N_sim_data-sim_1, x_1-sim_2, ..., x_N_sim_data-sim_N_simulations]
   dt_all_simulation = as.vector(dt_all_simulation)
   dt_all_simulation = data.table(dt_all_simulation)
   colnames(dt_all_simulation) = "D"
-  # We also need to duplicate the entries in the DoE for the depth properties to match this stored output
+  # Also duplicate the entries in the DoE for the depth properties to match this stored output
   # store in format: [Sim1 x N_sim_data, Sim2 x N_sim_data, ... , sim_N_simulations x N_N_sim_data]
-  # Create an index of the rows you want with duplications
   idx = rep(1:n_simulations, rep(N_sim_data,n_simulations))
   d_simulation = d_simulation[idx, ]
   
@@ -140,8 +132,7 @@
   # For speed we need to cherry-pick data points. To do this we set up a design of experiments to 
   # choose observations in order to satisfy the maximin criterion in the x-d space
   
-  # transform inputs onto unit hypercube prior to undertaking the maximin design. This prevents 
-  # any inputs with larger magnitude dominating in the distance calculations
+  # transform inputs onto unit hypercube prior to undertaking the maximin design.
   minx = as.matrix(colMins(as.matrix(XT_sim)))
   minx = matrix(rep(minx,n_simulations*N_sim_data),ncol=nrow(minx),byrow=TRUE)
   maxx = as.matrix(colMaxs(as.matrix(XT_sim)))
@@ -175,8 +166,7 @@
   
   #-----------------------------------------------------------------------------
   
-  # In this section of code the data is put into the correct format for input to stan,
-  # and the stan code for calibration, and prediction, is run
+  # Put data into the correct format for input to stan
   
   # store a set of x coordinates for plotting calibration predictions
   x_pred = as.matrix(x_plot)
@@ -194,7 +184,6 @@
   
   # Note, the below calibration is a modification of the implementation at:
   # https://github.com/adChong/bc-stan/blob/master/src/main.R
-  # Specifically, a much more efficient code for making predictions with the emulator has been implemented
   
   # get dimensions of the various datasets
   p = ncol(dt_coords)         # number of input factors (x)
@@ -235,9 +224,8 @@
                    xf=as.matrix(xf), xc=as.matrix(xc), 
                    x_pred=as.matrix(x_pred), tc=as.matrix(tc))
   
-  
   # Run code for Bayesian Calibration, and subsequent prediction using Gaussian process
-  fit0 = stan(file = "bcWithPred.stan",
+  fit = stan(file = "stan/bcWithPred.stan",
              data = stan_data,
              iter = 4000,
              chains = 3)
@@ -249,13 +237,13 @@
   
   # plot traceplots, excluding warm-up
   dev.new(noRStudioGD = TRUE)  # generate plots in separate window
-  stan_trace(fit0, pars = c("tf", "rho_eta", "rho_delta","lambda_eta", "lambda_delta","lambda_e"))
+  stan_trace(fit, pars = c("tf", "rho_eta", "rho_delta","lambda_eta", "lambda_delta","lambda_e"))
   
   # summarise results to check convergence
-  print(fit0, pars = c("tf", "beta_eta", "beta_delta","lambda_eta", "lambda_delta","lambda_e","f_pred"))
+  print(fit, pars = c("tf", "beta_eta", "beta_delta","lambda_eta", "lambda_delta","lambda_e","f_pred"))
   
   # extract samples from stan output
-  samples <- extract(fit0)
+  samples <- extract(fit)
   N_samples = dim(samples$rho_eta)[1] # get total number of samples
   
   # extract predicted displacements and transform these onto their correct scale
@@ -289,7 +277,6 @@
     lines(rho_plot,prior_plot,lwd=3,col="blue")
   }
   # plot correlation length of discrepancy
-  # plot histogram of posterior distribution
   hist(samples$rho_delta[,1],
        main = "correlation length discrepancy",
        xlab = "rho_delta1",
@@ -304,7 +291,6 @@
   lines(rho_plot,prior_plot,lwd=3,col="blue")
   
   # marginal precision of emulator
-  # plot posterior
   hist(samples$lambda_eta,
        main = "lambda_eta",
        xlab = "lambda_eta",
@@ -374,7 +360,7 @@
   prior_plot = dunif(d_plot,min=-0.1*d,max=0.1*d,log=FALSE)
   lines(d_plot+d,prior_plot,lwd=3,"col"="blue")
   
-  # estimate mode of the posterior distribution (calling estimate mode function)
+  # estimate mode of the posterior distribution 
   modes = estimate_mode(tf_trans)+d # add onto nominal value of d, as calibration is performed on the deviation from this value
   print("calibration parameter mode = ")
   print(modes)
@@ -400,9 +386,7 @@
   # plot legend
   legend(x = "topright",legend = c("sample response","true response","observed response"),col=c(nom_colors[6],"blue","red"),pch=c(NA,NA,4),lty = c(1,1,NA),lwd = c(1.75,2,2))
   
-  # plot average calibrated prediction (effectively integrating out uncertainty
-  # across emulator hyperparameters, and the calibration parameter)
-  # each column is a point in space, so we can use colMeans to give the average prediction at each point in space
+  # plot average calibrated prediction to integrate out uncertainty
   f_trans_mu = colMeans(f_trans)
   dev.new(noRStudioGD = TRUE) # plot in a new window
   plot(x_plot,f_trans_mu,type="l",col="magenta",main = "Calibrated Model", lwd=2,xlim=c(0,L),ylim=c(min(f_trans),max(f_trans)),'xlab'="x (m)",'ylab'="displacement (m)",cex.lab=1.5,cex.axis=1.5)
@@ -415,7 +399,6 @@
   
   # generate plot of quantiles and median. Code also taken from:
   # https://betanalpha.github.io/assets/case_studies/gaussian_processes.html#21_Simulating_From_A_Gaussian_Process
-  # define colours used to shade the different quantiles
   c_light <- c("#DCBCBC")
   c_light_highlight <- c("#C79999")
   c_mid <- c("#B97C7C")
