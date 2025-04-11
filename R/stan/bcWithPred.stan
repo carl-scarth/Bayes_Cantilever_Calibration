@@ -44,6 +44,7 @@ functions {
     // Note that this depends on both controlled (x), and calibration inputs (t)
     // diagonal elements of sigma_eta
     sigma_eta = diag_matrix(rep_vector((1 / lambda_eta), N));
+
     // off-diagonal elements of sigma_eta
     for (i in 1:(N-1)) {
       for (j in (i+1):N) {
@@ -58,6 +59,7 @@ functions {
     // Note that this only depends upon controlled inputs, x
     // diagonal elements of sigma_delta
     sigma_delta = diag_matrix(rep_vector((1 / lambda_delta), n+n_pred));
+    
     // off-diagonal elements of sigma_delta
     for (i in 1:(n+n_pred-1)) {
       for (j in (i+1):(n+n_pred)) {
@@ -72,9 +74,14 @@ functions {
     // structure of covariance matrix is arranged to match the appropriate components of xt as outlined above
     sigma_z = sigma_eta;
     sigma_z[1:n, 1:n] = sigma_eta[1:n, 1:n] + sigma_delta[1:n, 1:n];
-    sigma_z[1:n, (n+m+1):N] = sigma_eta[1:n, (n+m+1):N] + sigma_delta[1:n, (n+1):(n+n_pred)];
-    sigma_z[(n+m+1):N, 1:n] = sigma_eta[(n+m+1):N, 1:n] + sigma_delta[(n+1):(n+n_pred),1:n];
-    sigma_z[(n+m+1):N, (n+m+1):N] = sigma_eta[(n+m+1):N, (n+m+1):N] + sigma_delta[(n+1):(n+n_pred), (n+1):(n+n_pred)];
+    
+    // Only populate components corresponding to preditions if needed
+    if (n_pred > 0) {
+      sigma_z[1:n, (n+m+1):N] = sigma_eta[1:n, (n+m+1):N] + sigma_delta[1:n, (n+1):(n+n_pred)];
+      sigma_z[(n+m+1):N, 1:n] = sigma_eta[(n+m+1):N, 1:n] + sigma_delta[(n+1):(n+n_pred),1:n];
+      sigma_z[(n+m+1):N, (n+m+1):N] = sigma_eta[(n+m+1):N, (n+m+1):N] + sigma_delta[(n+1):(n+n_pred), (n+1):(n+n_pred)];
+    }
+  
     // add observation errors
     for (i in 1:n) {
       sigma_z[i, i] = sigma_z[i, i] + (1.0/lambda_e);
@@ -182,7 +189,7 @@ model {
   // Assemble joint covariance matrix
   sigma_z = cal_pred_cov(n, m, 0, p, q, xf, tf, xc, tc, rep_matrix(0,0,p), beta_eta, lambda_eta, beta_delta, lambda_delta, lambda_e);
   
-// Specify priors here
+  // Specify priors here
   rho_eta[1:(p+q)] ~ beta(1.0, 0.3); // correlation parameter for emulator
   rho_delta[1:p] ~ beta(1.0, 0.3); // correlation parameter for discrepancy
   lambda_eta ~ gamma(10, 10); // precision parameter for emulator. gamma (shape, rate)
