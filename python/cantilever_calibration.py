@@ -11,7 +11,7 @@ import pytensor
 import pytensor.tensor as tt
 import arviz as az
 
-src_path = "../src"
+src_path = "src/"
 sys.path.insert(0, src_path)
 
 from cantilever_beam import *  # Import cantilever model
