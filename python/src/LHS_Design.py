@@ -1,5 +1,4 @@
 import numpy as np
-import mogp_emulator as mogp
 from scipy.stats import norm, uniform, loguniform, lognorm, gamma
 from scipy.stats.qmc import LatinHypercube
 from skopt.space import Space
@@ -34,10 +33,6 @@ def transformed_LHS(input_list, N_train, sampler_package = "scipy", sampler_kwar
         space = Space([(0.0, 1.0) for entry in input_list])
         FLHS = sampler.generate(space.dimensions, N_train)
         FLHS = np.array(FLHS)
-    elif sampler_package == "mogp":
-        # Create a Latin Hypercube Sample (LHS) object defined on the unit hypercube [0, 1]^d
-        sampler = mogp.LatinHypercubeDesign([(0.0, 1.0) for entry in input_list])
-        FLHS = sampler.sample(N_train)
 
     # Weight the Latin Hypercube Sample acccording to the prior PDF if required
     # otherwise bound between max and min values (taken as +/- 3 standard 
