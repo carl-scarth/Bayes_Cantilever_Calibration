@@ -38,9 +38,6 @@ def transformed_LHS(input_list, N_train, sampler_package = "scipy", sampler_kwar
     # otherwise bound between max and min values (taken as +/- 3 standard 
     # deviations if Gaussian)
     xLHS = np.empty([N_train, d])
-    # It would be good to have this as a method of the prior. 
-    # It might be possible to do this via the rv_continuous class of scipy
-    # without the conditional
     for i, item in enumerate(priors):
         if not item.weight_LHS:
             xLHS[:,i] = [uniform.ppf(xij, loc = item.min, scale = (item.max - item.min)) for xij in FLHS[:,i]]

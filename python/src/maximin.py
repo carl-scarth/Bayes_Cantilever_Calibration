@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 
 # Code for determining a random subset of points from a pandas dataframe which maximises the minimum distace between points
-# Should be easy to modify for pandas using df.sample()
 def maximin(x, N_sam, N_iter, N_init = [], replace_method = "random"):
     # If not already, convert data to the correct format, or raise exception
     if isinstance(x, pd.DataFrame):
@@ -37,8 +36,7 @@ def maximin(x, N_sam, N_iter, N_init = [], replace_method = "random"):
         elif replace_method == "min":
             # Pick point which had closest distance from it's nearest neighbour
             # in previous iteration
-            # Doesn't work as well as random, potential for being trapping in
-            # local optima
+            # Not as effective as random, potential for being trapping in local optima
             i_rep = d_argmin
         else:
             raise Exception("Please enter a valid replacement method")

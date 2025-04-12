@@ -21,9 +21,6 @@ def sample_prior(input_list, N):
     
     x = np.empty([N, d])
     for i, inp in enumerate(priors):
-        # Would be better if this were a method of the Priors object...
-        # It might be possible to do this via the rv_continuous class of scipy
-        # without the conditional
         if inp.distribution == 'Gaussian':
             x[:,i] = norm(loc = inp.mu, scale = inp.sigma).rvs(size = N)
         elif inp.distribution == 'Lognormal':

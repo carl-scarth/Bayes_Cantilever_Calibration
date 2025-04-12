@@ -48,7 +48,7 @@ class KennedyOHagan(pm.gp.cov.Covariance):
     def full(self, X, Xs = None):
         # Xs is passed as a second input to the covariance to return the cross-covariance between X and Xs
         cov_em = pm.gp.cov.Constant(self.sigma_eta**2) * pm.gp.cov.ExpQuad(2,ls=self.ls) + pm.gp.cov.WhiteNoise(1e-8)
-        # ls does note stand for l^2, so actually covariance is exp(-(X-X')/(2*LS^2))
+        # ls does not stand for l^2, so actually covariance is exp(-(X-X')/(2*LS^2))
         if Xs is None:
             # This should be the main usage - should never have to calculate a cross covariance
             cov_full = cov_em(X)
@@ -65,7 +65,6 @@ class KennedyOHagan(pm.gp.cov.Covariance):
         return(cov_full)
 
 if __name__ == "__main__":
-
 
     # ------------------------------------------------------------------------------
     # Define space of inputs, generate training samples, and set up model parameters
