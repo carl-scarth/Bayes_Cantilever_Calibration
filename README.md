@@ -1,6 +1,8 @@
 
 # Bayes_Cantilever_Calibration
 
+## Overview
+
 This repository contains Bayesian uncertainty quantification case studies built around a toy problem, considering the displacement of a cantilever Euler-Bernoulli beam with rectangular cross section and a point load at the tip. These studies were created to test code for fitting Gaussian process emulators and Bayesian model calibration. Code was initially written in R and Stan, then later converted to python (and pymc) for improved efficiency. Both versions of the code are provided. Each of the scripts in the main "R" and "python" subdirectories are self-contained case studies. Contents include:
 
 - cantilever_calibration.py, cantlever_calibration.R: Demonstrative 1D model calibration example using synthetic experimental data constructed from model output + noise.
@@ -11,7 +13,7 @@ This repository contains Bayesian uncertainty quantification case studies built 
 
 ---
 
-How to run:
+## How to run:
 
 For best results, run the python scripts from the command line via a conda environment as described in the installation procedure for pymc, see:  
 <https://www.pymc.io/projects/docs/en/stable/installation.html>
