@@ -23,8 +23,9 @@ The R scripts may be run from [RStudio](https://posit.co/download/rstudio-deskto
 
 ---
 
-Dependencies:  
-Python scripts have been implemented and tested using Python 3.13.2, and:  
+## Dependencies:  
+
+Python scripts were implemented and tested using Python 3.13.2, and:  
 - pymc 5.22.0
 - numpy 2.2.4
 - scipy 1.15.2
@@ -34,10 +35,10 @@ Python scripts have been implemented and tested using Python 3.13.2, and:
 - scikit-optimize 0.10.2
 - scikit-learn 1.6.1
   
-R scripts have been implemented and tested using R 4.4.3, and:
+R scripts were implemented and tested using R 4.4.3, and:
 - Rtools 44
 - Rstan 2.32.7
-- data.table 1.17.0,
+- data.table 1.17.0
 - maximin 1.0-6
 - plot3D 1.4.1, plot3Drgl 1.0.4
 - colormap 0.1.4
