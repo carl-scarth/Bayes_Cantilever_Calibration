@@ -9,9 +9,12 @@ This repository contains Bayesian uncertainty quantification case studies built 
 
 - tip_emulator.py: Demonstrative example using Gaussian process emulators in uncertainty propagation of a of a 5D input onto a 1D (univariate) output, taken as the maximum beam displacement. Probabilty Density Functions of the emulated output and model are compared.
 
+---
+
 How to run:
 
-For best results, run the python scripts from the command line via a conda environment as described in the installation procedure for pymc: see [link](https://www.pymc.io/projects/docs/en/stable/installation.html).
+For best results, run the python scripts from the command line via a conda environment as described in the installation procedure for pymc, see: 
+[link](https://www.pymc.io/projects/docs/en/stable/installation.html).
 
 The R scripts may be run from RStudio [link](https://posit.co/download/rstudio-desktop/). The <code>setwd()<code> line near the top of each script must first be modified to the sub-directory containing the R scripts on the user's system. Before running RStan you will need to configure your R installation to be able to compile C++ code using the latest version of Rtools. See: [link](https://github.com/stan-dev/rstan/wiki/Rstan-Getting-Started), also [link](https://cran.r-project.org/bin/windows/Rtools/).
 
