@@ -15,8 +15,8 @@ How to run:
 
 For best results, run the python scripts from the command line via a conda environment as described in the installation procedure for pymc, see:  
 <https://www.pymc.io/projects/docs/en/stable/installation.html>
-
-
+  
+  
 The R scripts may be run from [RStudio](https://posit.co/download/rstudio-desktop/). The <code>setwd()</code> line near the top of each script must first be modified to the sub-directory containing the R scripts on the user's system. Before running RStan you will need to configure your R installation to be able to compile C++ code using the latest version of Rtools. See: 
 
 <https://github.com/stan-dev/rstan/wiki/Rstan-Getting-Started>  
